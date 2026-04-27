@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cycle Log">
+<title>Cycle Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#0d0d0f;--bg2:#141416;--bg3:#1a1a1d;--bg4:#222226;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);--text:#eeebe6;--text2:#918e89;--text3:#555350;--accent:#c8a97e;--accent2:#9a7a54;--danger:#d4756b;--warning:#c4935a;--calm:#7a9e8e;--info:#6a8eae;--r:10px;--r2:16px;--safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.5;overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;height:100dvh;}
+.nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding-top:var(--safe-top);flex-shrink:0;}
+.nav-btn{flex:1;padding:13px 2px 11px;text-align:center;font-size:10.5px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.views{flex:1;overflow:hidden;}
+.view{display:none;height:100%;overflow-y:auto;padding:20px 16px calc(var(--safe-bot) + 28px);}
+.view.active{display:block;}
+.section-title{font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin:26px 0 10px;}
+.section-title:first-child{margin-top:0;}
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:10px;}
+.card-sm{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;margin-bottom:7px;}
+.phase-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+.phase-men{background:rgba(139,74,74,.18);color:#e09090;}
+.phase-ef{background:rgba(184,131,58,.18);color:#dba860;}
+.phase-lf{background:rgba(122,144,64,.18);color:#a8c860;}
+.phase-ov{background:rgba(74,138,120,.18);color:#80c8b0;}
+.phase-el{background:rgba(74,106,158,.18);color:#80a8e0;}
+.phase-ll{background:rgba(122,90,158,.18);color:#b090d8;}
+.window-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;margin-left:6px;}
+.window-anger{background:rgba(184,131,58,.22);color:#dba860;}
+.window-pmdd{background:rgba(122,90,158,.22);color:#b090d8;}
+.window-none{background:rgba(74,138,120,.15);color:var(--calm);}
+.today-date{font-size:12px;color:var(--text3);margin-bottom:3px;}
+.today-cycle{font-size:30px;font-weight:300;margin-bottom:10px;}
+.today-cycle span{color:var(--accent);font-family:'DM Serif Display',serif;}
+.cycle-bar{height:5px;border-radius:3px;background:var(--bg4);position:relative;margin:14px 0 6px;overflow:visible;}
+.cycle-bar-fill{height:100%;border-radius:3px;}
+.cycle-bar-marker{position:absolute;top:-4px;width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translateX(-50%);}
+.bar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);}
+.cgl{font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:500;}
+.check-option{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.check-option:last-child{border-bottom:none;}
+.check-box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.check-option.selected .check-box{background:var(--accent);border-color:var(--accent);}
+.check-box::after{content:'';width:5px;height:9px;border:2px solid var(--bg);border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);opacity:0;}
+.check-option.selected .check-box::after{opacity:1;}
+.check-text{font-size:13.5px;color:var(--text);line-height:1.4;}
+.check-text small{display:block;font-size:11.5px;color:var(--text3);margin-top:1px;}
+.multi-option{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.multi-option:last-child{border-bottom:none;}
+.multi-box{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.multi-option.selected .multi-box{background:var(--info);border-color:var(--info);}
+.multi-box::after{content:'';width:5px;height:9px;border:2px solid var(--bg);border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);opacity:0;}
+.multi-option.selected .multi-box::after{opacity:1;}
+.multi-text{font-size:13.5px;color:var(--text);}
+.multi-text small{display:block;font-size:11px;color:var(--warning);}
+.toggle-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.toggle-chip{padding:7px 13px;border-radius:20px;font-size:13px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;background:none;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.toggle-chip.selected{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:500;}
+.text-input{width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text);font-size:13.5px;font-family:'DM Sans',sans-serif;resize:none;outline:none;}
+.text-input:focus{border-color:var(--accent2);}
+.text-input-sm{width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
+.text-input-sm:focus{border-color:var(--accent2);}
+.btn{display:block;width:100%;padding:14px;border-radius:var(--r);font-size:15px;font-weight:500;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.btn-primary{background:var(--accent);color:var(--bg);}
+.btn-primary:active{transform:scale(.98);background:var(--accent2);}
+.btn-secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);margin-top:8px;}
+.btn-sm{display:inline-block;width:auto;padding:7px 14px;font-size:12px;border-radius:8px;}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.metric-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:13px;}
+.metric-val{font-size:22px;font-weight:300;color:var(--accent);font-family:'DM Serif Display',serif;}
+.metric-label{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;}
+.chart-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:15px;margin-bottom:10px;}
+.chart-title{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:11px;}
+.chart-container{position:relative;height:155px;}
+.history-entry{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:13px;margin-bottom:8px;cursor:pointer;}
+.history-date{font-size:12px;color:var(--text2);margin-bottom:4px;}
+.history-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.h-scores{display:flex;gap:10px;flex-wrap:wrap;}
+.h-score{font-size:11.5px;color:var(--text3);}
+.h-score span{color:var(--text2);font-weight:500;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);}
+.setting-label{font-size:14px;}
+.setting-sub{font-size:11.5px;color:var(--text3);margin-top:2px;}
+.date-input{background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;align-items:flex-end;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border-radius:var(--r2) var(--r2) 0 0;width:100%;max-height:88vh;overflow-y:auto;padding:18px 16px calc(var(--safe-bot) + 20px);}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:18px;font-family:'DM Serif Display',serif;margin-bottom:14px;}
+.modal-close{float:right;font-size:12px;color:var(--text3);cursor:pointer;}
+.modal-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;gap:12px;}
+.modal-row:last-child{border:none;}
+.modal-key{color:var(--text2);flex-shrink:0;}
+.modal-val{color:var(--text);text-align:right;}
+.toast{position:fixed;bottom:calc(var(--safe-bot) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg4);border:1px solid var(--border2);border-radius:20px;padding:9px 18px;font-size:13px;color:var(--text);opacity:0;transition:all .3s;z-index:200;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.empty{text-align:center;padding:60px 20px;color:var(--text3);}
+.logged-banner{background:rgba(200,169,126,.08);border:1px solid rgba(200,169,126,.2);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.flag-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.flag-label{font-size:13px;color:var(--text2);font-weight:500;}
+.flag-toggle{display:flex;gap:6px;}
+.flag-btn{padding:5px 14px;border-radius:16px;font-size:12px;border:1px solid var(--border2);color:var(--text3);cursor:pointer;background:none;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.flag-active-yes{background:var(--danger)!important;color:#fff!important;border-color:var(--danger)!important;}
+.flag-active-no{background:var(--bg4)!important;color:var(--text2)!important;}
+.collapsible{display:none;}
+.collapsible.open{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="nav">
+  <button class="nav-btn active" onclick="showView('log')">Log</button>
+  <button class="nav-btn" onclick="showView('dashboard')">Trends</button>
+  <button class="nav-btn" onclick="showView('history')">History</button>
+  <button class="nav-btn" onclick="showView('settings')">Settings</button>
+</nav>
+<div class="views">
+
+<!-- LOG -->
+<div class="view active" id="view-log">
+  <div style="margin-bottom:18px;">
+    <div class="today-date" id="hdr-date"></div>
+    <div class="today-cycle">Cycle day <span id="hdr-day">—</span></div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span class="phase-pill" id="hdr-phase">—</span>
+      <span class="window-badge" id="hdr-win">—</span>
+    </div>
+    <div class="cycle-bar">
+      <div class="cycle-bar-fill" id="bar-fill" style="width:0%;background:var(--accent2);"></div>
+      <div class="cycle-bar-marker" id="bar-marker" style="left:0%;"></div>
+    </div>
+    <div class="bar-labels"><span>Day 1</span><span id="bar-next">—</span></div>
+  </div>
+  <div id="logged-banner" class="logged-banner" style="display:none;">
+    <div style="font-size:13px;color:var(--accent);margin-bottom:6px;">Already logged today</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:9px;">Submitting again will overwrite today's entry.</div>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logged-banner').style.display='none'">Log anyway</button>
+  </div>
+  <form id="log-form" onsubmit="saveLog(event)">
+
+  <!-- BLEEDING -->
+  <div class="section-title">Bleeding</div>
+  <div class="card">
+    <div class="cgl">Flow today</div>
+    <label class="check-option" onclick="sel(this,'bleeding','none')"><div class="check-box"></div><div class="check-text">None — no bleeding</div></label>
+    <label class="check-option" onclick="sel(this,'bleeding','spotting')"><div class="check-box"></div><div class="check-text">Spotting<small>Light staining, no product needed</small></div></label>
+    <label class="check-option" onclick="sel(this,'bleeding','light')"><div class="check-box"></div><div class="check-text">Light<small>Liner or light product, changing less than every 4 hrs</small></div></label>
+    <label class="check-option" onclick="sel(this,'bleeding','medium')"><div class="check-box"></div><div class="check-text">Medium<small>Regular product, changing every 3–4 hrs</small></div></label>
+    <label class="check-option" onclick="sel(this,'bleeding','heavy')"><div class="check-box"></div><div class="check-text">Heavy<small>Changing every 1–2 hrs or soaking through</small></div></label>
+  </div>
+
+  <!-- ILLNESS -->
+  <div class="section-title">Illness</div>
+  <div class="card">
+    <div class="flag-row">
+      <div class="flag-label">Sick today?</div>
+      <div class="flag-toggle">
+        <button type="button" class="flag-btn" id="ill-no" onclick="toggleFlag('illness','no')">No</button>
+        <button type="button" class="flag-btn" id="ill-yes" onclick="toggleFlag('illness','yes')">Yes</button>
+      </div>
+    </div>
+    <div class="collapsible" id="illness-detail">
+      <div class="cgl">Severity</div>
+      <label class="check-option" onclick="sel(this,'illSeverity','mild')"><div class="check-box"></div><div class="check-text">Mild<small>Minor symptoms, fully functional</small></div></label>
+      <label class="check-option" onclick="sel(this,'illSeverity','moderate')"><div class="check-box"></div><div class="check-text">Moderate<small>Noticeably unwell, some impact on function</small></div></label>
+      <label class="check-option" onclick="sel(this,'illSeverity','significant')"><div class="check-box"></div><div class="check-text">Significant<small>Symptomatic enough to affect the whole day</small></div></label>
+      <label class="check-option" onclick="sel(this,'illSeverity','severe')"><div class="check-box"></div><div class="check-text">Severe<small>Sick enough to stay home / cancel plans</small></div></label>
+      <div class="divider"></div>
+      <div class="cgl">Symptoms <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      <div id="multi-illSx">
+        <div class="multi-option" onclick="ms(this,'illSx','sore-throat')"><div class="multi-box"></div><div class="multi-text">Sore throat</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','congestion')"><div class="multi-box"></div><div class="multi-text">Congestion / runny nose</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','cough')"><div class="multi-box"></div><div class="multi-text">Cough</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','fever')"><div class="multi-box"></div><div class="multi-text">Fever / chills</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','body-aches')"><div class="multi-box"></div><div class="multi-text">Body aches</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','nausea-gi')"><div class="multi-box"></div><div class="multi-text">Nausea / GI upset</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','fatigue-ill')"><div class="multi-box"></div><div class="multi-text">Fatigue beyond normal</div></div>
+        <div class="multi-option" onclick="ms(this,'illSx','headache-ill')"><div class="multi-box"></div><div class="multi-text">Headache (illness-related)</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="cgl">Medication taken <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      <div id="multi-illMeds">
+        <div class="multi-option" onclick="ms(this,'illMeds','none')"><div class="multi-box"></div><div class="multi-text">None</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','echinacea')"><div class="multi-box"></div><div class="multi-text">Echinacea</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','oil-oregano')"><div class="multi-box"></div><div class="multi-text">Oil of oregano</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','elderberry')"><div class="multi-box"></div><div class="multi-text">Elderberry</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','vit-c-extra')"><div class="multi-box"></div><div class="multi-text">Vitamin C extra dose</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','honey-ginger')"><div class="multi-box"></div><div class="multi-text">Honey / ginger / herbal</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','tylenol')"><div class="multi-box"></div><div class="multi-text">Tylenol / acetaminophen</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','ibuprofen')"><div class="multi-box"></div><div class="multi-text">Ibuprofen / Advil<small>Reduces Spironolactone efficacy</small></div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','tylenol-cold')"><div class="multi-box"></div><div class="multi-text">Tylenol Cold &amp; Flu / NyQuil</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','antihistamine')"><div class="multi-box"></div><div class="multi-text">Antihistamine (Benadryl etc)<small>Interaction risk with Allegra</small></div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','decongestant')"><div class="multi-box"></div><div class="multi-text">Decongestant (Sudafed etc)<small>May counteract Spironolactone</small></div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','antibiotic')"><div class="multi-box"></div><div class="multi-text">Prescribed antibiotic</div></div>
+        <div class="multi-option" onclick="ms(this,'illMeds','rx-other')"><div class="multi-box"></div><div class="multi-text">Prescribed — other (note below)</div></div>
+      </div>
+      <div style="margin-top:10px;"><input type="text" class="text-input-sm" id="ill-rx" placeholder="Prescription name if applicable"></div>
+    </div>
+  </div>
+
+  <!-- ALLERGIES -->
+  <div class="section-title">Allergies</div>
+  <div class="card">
+    <div class="flag-row">
+      <div class="flag-label">Allergy symptoms today?</div>
+      <div class="flag-toggle">
+        <button type="button" class="flag-btn" id="allergy-no" onclick="toggleFlag('allergy','no')">No</button>
+        <button type="button" class="flag-btn" id="allergy-yes" onclick="toggleFlag('allergy','yes')">Yes</button>
+      </div>
+    </div>
+    <div class="collapsible" id="allergy-detail">
+      <div class="cgl">Breakthrough severity <span style="font-size:11px;color:var(--text3);font-weight:400;">despite Allegra 120mg</span></div>
+      <label class="check-option" onclick="sel(this,'allergySev','controlled')"><div class="check-box"></div><div class="check-text">None — fully controlled today</div></label>
+      <label class="check-option" onclick="sel(this,'allergySev','mild')"><div class="check-box"></div><div class="check-text">Mild<small>Minor breakthrough, barely noticeable</small></div></label>
+      <label class="check-option" onclick="sel(this,'allergySev','moderate')"><div class="check-box"></div><div class="check-text">Moderate<small>Noticeable symptoms despite medication</small></div></label>
+      <label class="check-option" onclick="sel(this,'allergySev','significant')"><div class="check-box"></div><div class="check-text">Significant<small>Meaningfully symptomatic, affecting comfort</small></div></label>
+      <label class="check-option" onclick="sel(this,'allergySev','severe')"><div class="check-box"></div><div class="check-text">Severe<small>Poorly controlled, significantly impacting the day</small></div></label>
+      <div class="divider"></div>
+      <div class="cgl">Symptoms <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      <div id="multi-allergySx">
+        <div class="multi-option" onclick="ms(this,'allergySx','sneezing')"><div class="multi-box"></div><div class="multi-text">Sneezing</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','itchy-eyes')"><div class="multi-box"></div><div class="multi-text">Itchy / watery eyes</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','nasal-congestion')"><div class="multi-box"></div><div class="multi-text">Nasal congestion</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','runny-nose')"><div class="multi-box"></div><div class="multi-text">Runny nose</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','itchy-skin')"><div class="multi-box"></div><div class="multi-text">Itchy skin / hives</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','throat-irritation')"><div class="multi-box"></div><div class="multi-text">Throat irritation</div></div>
+        <div class="multi-option" onclick="ms(this,'allergySx','fatigue-allergy')"><div class="multi-box"></div><div class="multi-text">Fatigue from allergies</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="cgl" style="margin-bottom:8px;">Trigger if known</div>
+      <input type="text" class="text-input-sm" id="allergy-trigger" placeholder="e.g. outdoor pollen, dusty office, pet, food">
+      <div class="divider"></div>
+      <div class="cgl">Additional allergy medication <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      <div id="multi-allergyMeds">
+        <div class="multi-option" onclick="ms(this,'allergyMeds','allegra-only')"><div class="multi-box"></div><div class="multi-text">No — Allegra only as usual</div></div>
+        <div class="multi-option" onclick="ms(this,'allergyMeds','nasal-spray')"><div class="multi-box"></div><div class="multi-text">Added nasal spray</div></div>
+        <div class="multi-option" onclick="ms(this,'allergyMeds','eye-drops')"><div class="multi-box"></div><div class="multi-text">Added eye drops</div></div>
+        <div class="multi-option" onclick="ms(this,'allergyMeds','antihistamine-extra')"><div class="multi-box"></div><div class="multi-text">Added antihistamine<small>Interaction risk with Allegra</small></div></div>
+        <div class="multi-option" onclick="ms(this,'allergyMeds','other')"><div class="multi-box"></div><div class="multi-text">Other — note in free text</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOOD -->
+  <div class="section-title">Mood</div>
+  <div class="card">
+    <div class="cgl">Irritability / anger</div>
+    <label class="check-option" onclick="sel(this,'irritability',0)"><div class="check-box"></div><div class="check-text">None — felt calm and even-tempered</div></label>
+    <label class="check-option" onclick="sel(this,'irritability',1)"><div class="check-box"></div><div class="check-text">Mild — slightly short-tempered, recovered quickly</div></label>
+    <label class="check-option" onclick="sel(this,'irritability',2)"><div class="check-box"></div><div class="check-text">Moderate — snapped at someone or had to actively manage it</div></label>
+    <label class="check-option" onclick="sel(this,'irritability',3)"><div class="check-box"></div><div class="check-text">Severe — significant outbursts, hard to control</div></label>
+    <label class="check-option" onclick="sel(this,'irritability',4)"><div class="check-box"></div><div class="check-text">Extreme — unable to function normally, felt out of character</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Sadness / anhedonia</div>
+    <label class="check-option" onclick="sel(this,'sadness',0)"><div class="check-box"></div><div class="check-text">None — felt engaged and interested in life</div></label>
+    <label class="check-option" onclick="sel(this,'sadness',1)"><div class="check-box"></div><div class="check-text">Mild — slightly flat or low, still functional</div></label>
+    <label class="check-option" onclick="sel(this,'sadness',2)"><div class="check-box"></div><div class="check-text">Moderate — noticeably sad, little interest in usual things</div></label>
+    <label class="check-option" onclick="sel(this,'sadness',3)"><div class="check-box"></div><div class="check-text">Severe — couldn't motivate, felt hopeless or empty</div></label>
+    <label class="check-option" onclick="sel(this,'sadness',4)"><div class="check-box"></div><div class="check-text">Extreme — could not get through normal tasks</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Anxiety / on edge</div>
+    <label class="check-option" onclick="sel(this,'anxiety',0)"><div class="check-box"></div><div class="check-text">None</div></label>
+    <label class="check-option" onclick="sel(this,'anxiety',1)"><div class="check-box"></div><div class="check-text">Mild — slightly keyed up</div></label>
+    <label class="check-option" onclick="sel(this,'anxiety',2)"><div class="check-box"></div><div class="check-text">Moderate — noticeably anxious, hard to settle</div></label>
+    <label class="check-option" onclick="sel(this,'anxiety',3)"><div class="check-box"></div><div class="check-text">Severe — racing thoughts, couldn't concentrate</div></label>
+    <label class="check-option" onclick="sel(this,'anxiety',4)"><div class="check-box"></div><div class="check-text">Extreme — overwhelming, panic-adjacent</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Mood swings</div>
+    <label class="check-option" onclick="sel(this,'moodswings',0)"><div class="check-box"></div><div class="check-text">None — mood was stable all day</div></label>
+    <label class="check-option" onclick="sel(this,'moodswings',1)"><div class="check-box"></div><div class="check-text">Mild — small shifts, nothing notable</div></label>
+    <label class="check-option" onclick="sel(this,'moodswings',2)"><div class="check-box"></div><div class="check-text">Moderate — noticeable swings within the day</div></label>
+    <label class="check-option" onclick="sel(this,'moodswings',3)"><div class="check-box"></div><div class="check-text">Severe — sharp emotional shifts, felt destabilized</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Negative thinking</div>
+    <label class="check-option" onclick="sel(this,'negativity',0)"><div class="check-box"></div><div class="check-text">None</div></label>
+    <label class="check-option" onclick="sel(this,'negativity',1)"><div class="check-box"></div><div class="check-text">Mild — slightly pessimistic</div></label>
+    <label class="check-option" onclick="sel(this,'negativity',2)"><div class="check-box"></div><div class="check-text">Moderate — catastrophizing about specific things</div></label>
+    <label class="check-option" onclick="sel(this,'negativity',3)"><div class="check-box"></div><div class="check-text">Severe — globally negative about life, world, relationships</div></label>
+    <label class="check-option" onclick="sel(this,'negativity',4)"><div class="check-box"></div><div class="check-text">Extreme — couldn't access any positive perspective</div></label>
+  </div>
+
+  <!-- COGNITION -->
+  <div class="section-title">Cognition</div>
+  <div class="card">
+    <div class="cgl">Concentration / brain fog</div>
+    <label class="check-option" onclick="sel(this,'brainfog',0)"><div class="check-box"></div><div class="check-text">Clear — normal focus, no issues</div></label>
+    <label class="check-option" onclick="sel(this,'brainfog',1)"><div class="check-box"></div><div class="check-text">Mildly foggy — small lapses, recovered quickly</div></label>
+    <label class="check-option" onclick="sel(this,'brainfog',2)"><div class="check-box"></div><div class="check-text">Moderately foggy — had to re-read things, lost train of thought</div></label>
+    <label class="check-option" onclick="sel(this,'brainfog',3)"><div class="check-box"></div><div class="check-text">Severely foggy — couldn't complete tasks requiring focus</div></label>
+  </div>
+
+  <!-- PHYSICAL -->
+  <div class="section-title">Physical</div>
+  <div class="card">
+    <div class="cgl">Energy</div>
+    <label class="check-option" onclick="sel(this,'energy',0)"><div class="check-box"></div><div class="check-text">Normal or good</div></label>
+    <label class="check-option" onclick="sel(this,'energy',1)"><div class="check-box"></div><div class="check-text">Slightly tired but functional</div></label>
+    <label class="check-option" onclick="sel(this,'energy',2)"><div class="check-box"></div><div class="check-text">Fatigued — needed effort to do normal tasks</div></label>
+    <label class="check-option" onclick="sel(this,'energy',3)"><div class="check-box"></div><div class="check-text">Exhausted — wanted to cancel everything</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Sleep last night</div>
+    <label class="check-option" onclick="sel(this,'sleep',0)"><div class="check-box"></div><div class="check-text">Good — felt rested</div></label>
+    <label class="check-option" onclick="sel(this,'sleep',1)"><div class="check-box"></div><div class="check-text">Fair — some waking but okay</div></label>
+    <label class="check-option" onclick="sel(this,'sleep',2)"><div class="check-box"></div><div class="check-text">Poor — woke multiple times or took long to fall asleep</div></label>
+    <label class="check-option" onclick="sel(this,'sleep',3)"><div class="check-box"></div><div class="check-text">Very poor — barely slept or unrested despite sleeping</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Bloating</div>
+    <label class="check-option" onclick="sel(this,'bloating',0)"><div class="check-box"></div><div class="check-text">None</div></label>
+    <label class="check-option" onclick="sel(this,'bloating',1)"><div class="check-box"></div><div class="check-text">Mild — noticeable but not uncomfortable</div></label>
+    <label class="check-option" onclick="sel(this,'bloating',2)"><div class="check-box"></div><div class="check-text">Moderate — uncomfortable, clothes feel tight</div></label>
+    <label class="check-option" onclick="sel(this,'bloating',3)"><div class="check-box"></div><div class="check-text">Severe — painful or significantly distended</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Appetite / cravings</div>
+    <label class="check-option" onclick="sel(this,'appetite',0)"><div class="check-box"></div><div class="check-text">Normal</div></label>
+    <label class="check-option" onclick="sel(this,'appetite',1)"><div class="check-box"></div><div class="check-text">Mildly increased — wanted more than usual</div></label>
+    <label class="check-option" onclick="sel(this,'appetite',2)"><div class="check-box"></div><div class="check-text">Strong cravings — specific foods (note below)</div></label>
+    <label class="check-option" onclick="sel(this,'appetite',-1)"><div class="check-box"></div><div class="check-text">Suppressed — had to force myself to eat<small>Possible Mounjaro effect</small></div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Headache</div>
+    <label class="check-option" onclick="sel(this,'headache',0)"><div class="check-box"></div><div class="check-text">None</div></label>
+    <label class="check-option" onclick="sel(this,'headache',1)"><div class="check-box"></div><div class="check-text">Mild — present but ignorable</div></label>
+    <label class="check-option" onclick="sel(this,'headache',2)"><div class="check-box"></div><div class="check-text">Moderate — affecting concentration</div></label>
+    <label class="check-option" onclick="sel(this,'headache',3)"><div class="check-box"></div><div class="check-text">Severe — had to take something for it</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Pain / inflammation<small style="font-weight:400;font-size:11px;color:var(--text3);display:block;">Joint aches, breast tenderness, lower back, general body sensitivity</small></div>
+    <label class="check-option" onclick="sel(this,'pain',0)"><div class="check-box"></div><div class="check-text">None</div></label>
+    <label class="check-option" onclick="sel(this,'pain',1)"><div class="check-box"></div><div class="check-text">Mild — noticeable but not interfering</div></label>
+    <label class="check-option" onclick="sel(this,'pain',2)"><div class="check-box"></div><div class="check-text">Moderate — affecting comfort or movement</div></label>
+    <label class="check-option" onclick="sel(this,'pain',3)"><div class="check-box"></div><div class="check-text">Severe — hard to ignore</div></label>
+    <div style="margin-top:10px;"><input type="text" class="text-input-sm" id="pain-location" placeholder="Location if relevant — breast, back, joints…"></div>
+  </div>
+  <div class="card">
+    <div class="cgl">Acne / skin</div>
+    <label class="check-option" onclick="sel(this,'acne',0)"><div class="check-box"></div><div class="check-text">Clear — no active breakouts</div></label>
+    <label class="check-option" onclick="sel(this,'acne',1)"><div class="check-box"></div><div class="check-text">Mild — 1–2 spots, not inflamed</div></label>
+    <label class="check-option" onclick="sel(this,'acne',2)"><div class="check-box"></div><div class="check-text">Moderate — several spots, some inflamed</div></label>
+    <label class="check-option" onclick="sel(this,'acne',3)"><div class="check-box"></div><div class="check-text">Severe — multiple inflamed lesions, cystic</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Bowel regularity</div>
+    <label class="check-option" onclick="sel(this,'bowel',0)"><div class="check-box"></div><div class="check-text">Normal for me</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',1)"><div class="check-box"></div><div class="check-text">Slower than usual</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',2)"><div class="check-box"></div><div class="check-text">Significantly sluggish / uncomfortable</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',3)"><div class="check-box"></div><div class="check-text">Diarrhea / loose</div></label>
+  </div>
+
+  <!-- SEXUAL HEALTH -->
+  <div class="section-title">Sexual health</div>
+  <div class="card">
+    <div class="cgl">Libido</div>
+    <label class="check-option" onclick="sel(this,'libido',0)"><div class="check-box"></div><div class="check-text">Absent — no interest at all, not on my radar</div></label>
+    <label class="check-option" onclick="sel(this,'libido',1)"><div class="check-box"></div><div class="check-text">Low — below my personal baseline, noticeably reduced</div></label>
+    <label class="check-option" onclick="sel(this,'libido',2)"><div class="check-box"></div><div class="check-text">Normal — typical for me, neither high nor low</div></label>
+    <label class="check-option" onclick="sel(this,'libido',3)"><div class="check-box"></div><div class="check-text">Elevated — noticeably higher than my baseline</div></label>
+    <label class="check-option" onclick="sel(this,'libido',4)"><div class="check-box"></div><div class="check-text">High — significantly heightened, actively present</div></label>
+  </div>
+
+  <!-- FUNCTIONAL IMPACT -->
+  <div class="section-title">Functional impact</div>
+  <div class="card">
+    <div class="cgl">Work today</div>
+    <label class="check-option" onclick="sel(this,'work',0)"><div class="check-box"></div><div class="check-text">Fully functional — no impact</div></label>
+    <label class="check-option" onclick="sel(this,'work',1)"><div class="check-box"></div><div class="check-text">Mildly affected — slightly less productive</div></label>
+    <label class="check-option" onclick="sel(this,'work',2)"><div class="check-box"></div><div class="check-text">Moderately affected — got through it but it cost me</div></label>
+    <label class="check-option" onclick="sel(this,'work',3)"><div class="check-box"></div><div class="check-text">Significantly affected — had to push hard just to appear normal</div></label>
+    <label class="check-option" onclick="sel(this,'work',4)"><div class="check-box"></div><div class="check-text">Could not function</div></label>
+  </div>
+  <div class="card">
+    <div class="cgl">Relationships / interactions</div>
+    <label class="check-option" onclick="sel(this,'social',0)"><div class="check-box"></div><div class="check-text">Normal — engaged and present</div></label>
+    <label class="check-option" onclick="sel(this,'social',1)"><div class="check-box"></div><div class="check-text">Withdrew slightly — less social than usual</div></label>
+    <label class="check-option" onclick="sel(this,'social',2)"><div class="check-box"></div><div class="check-text">Actively avoided people</div></label>
+    <label class="check-option" onclick="sel(this,'social',3)"><div class="check-box"></div><div class="check-text">Had a conflict I attribute to my emotional state</div></label>
+  </div>
+
+  <!-- CONTEXT -->
+  <div class="section-title">Context</div>
+  <div class="card">
+    <div class="cgl" style="margin-bottom:9px;">Exercise today</div>
+    <div class="toggle-row">
+      <button type="button" class="toggle-chip" onclick="chip(this,'exercise','rest')">Rest day</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'exercise','light')">Light</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'exercise','moderate')">Moderate</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'exercise','heavy')">Heavy</button>
+    </div>
+    <div class="cgl" style="margin-bottom:9px;">Caffeine</div>
+    <div class="toggle-row">
+      <button type="button" class="toggle-chip" onclick="chip(this,'caffeine','0')">None</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'caffeine','1')">1 cup</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'caffeine','2')">2 cups</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'caffeine','3+')">3+</button>
+    </div>
+    <div class="cgl" style="margin-bottom:9px;">Sodium — approximate</div>
+    <div class="toggle-row">
+      <button type="button" class="toggle-chip" onclick="chip(this,'sodium','on-target')">On target</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'sodium','slightly-over')">Slightly over</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'sodium','over')">Significantly over</button>
+    </div>
+    <div class="cgl" style="margin-bottom:9px;">Mounjaro injection today</div>
+    <div class="toggle-row">
+      <button type="button" class="toggle-chip" onclick="chip(this,'mounjaro','yes')">Yes</button>
+      <button type="button" class="toggle-chip" onclick="chip(this,'mounjaro','no')">No</button>
+    </div>
+    <div class="cgl" style="margin-bottom:9px;">Medication notes <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+    <div id="multi-medNotes">
+      <div class="multi-option" onclick="ms(this,'medNotes','all-normal')"><div class="multi-box"></div><div class="multi-text">All supplements and meds taken as normal</div></div>
+      <div class="multi-option" onclick="ms(this,'medNotes','missed-supp')"><div class="multi-box"></div><div class="multi-text">Missed a supplement</div></div>
+      <div class="multi-option" onclick="ms(this,'medNotes','missed-rx')"><div class="multi-box"></div><div class="multi-text">Missed a prescription</div></div>
+      <div class="multi-option" onclick="ms(this,'medNotes','mounjaro-side')"><div class="multi-box"></div><div class="multi-text">Mounjaro side effects today</div></div>
+      <div class="multi-option" onclick="ms(this,'medNotes','extra-pain-relief')"><div class="multi-box"></div><div class="multi-text">Took extra pain relief (Tylenol / Advil)</div></div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="section-title">Notes</div>
+  <div class="card">
+    <div class="cgl" style="margin-bottom:7px;">Stress source today</div>
+    <textarea class="text-input" id="stress-source" rows="2" placeholder="Work, commute, nothing notable…"></textarea>
+    <div class="cgl" style="margin-bottom:7px;margin-top:14px;">Notes / anything else</div>
+    <textarea class="text-input" id="notes-field" rows="3" placeholder="Cravings, physical specifics, anything worth capturing…"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="margin-top:4px;">Save today's log</button>
+  <div style="height:24px;"></div>
+  </form>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view" id="view-dashboard">
+  <div class="section-title" style="margin-top:0;">Overview</div>
+  <div class="metric-grid">
+    <div class="metric-card"><div class="metric-val" id="m-entries">0</div><div class="metric-label">Days logged</div></div>
+    <div class="metric-card"><div class="metric-val" id="m-streak">0</div><div class="metric-label">Day streak</div></div>
+    <div class="metric-card"><div class="metric-val" id="m-anger">—</div><div class="metric-label">Anger window avg</div></div>
+    <div class="metric-card"><div class="metric-val" id="m-pmdd">—</div><div class="metric-label">PMDD window avg</div></div>
+  </div>
+  <div class="chart-wrap"><div class="chart-title">Irritability by cycle day</div><div class="chart-container"><canvas id="ch-irr" role="img" aria-label="Irritability by cycle day">Irritability scores.</canvas></div></div>
+  <div class="chart-wrap"><div class="chart-title">Sadness by cycle day</div><div class="chart-container"><canvas id="ch-sad" role="img" aria-label="Sadness by cycle day">Sadness scores.</canvas></div></div>
+  <div class="chart-wrap"><div class="chart-title">Energy and sleep — last 30 days</div><div class="chart-container" style="height:170px;"><canvas id="ch-energy" role="img" aria-label="Energy and sleep over time">Energy and sleep.</canvas></div></div>
+  <div class="chart-wrap"><div class="chart-title">Acne severity by cycle day</div><div class="chart-container"><canvas id="ch-acne" role="img" aria-label="Acne by cycle day">Acne severity.</canvas></div></div>
+  <div class="chart-wrap"><div class="chart-title">Libido by cycle day</div><div class="chart-container"><canvas id="ch-libido" role="img" aria-label="Libido by cycle day">Libido scores.</canvas></div></div>
+  <div class="chart-wrap"><div class="chart-title">Work impact by phase</div><div class="chart-container"><canvas id="ch-work" role="img" aria-label="Work impact by phase">Work impact per phase.</canvas></div></div>
+  <div id="insights-section"></div>
+  <div style="height:8px;"></div>
+</div>
+
+<!-- HISTORY -->
+<div class="view" id="view-history">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div class="section-title" style="margin:0;">Log history</div>
+    <button class="btn btn-secondary btn-sm" onclick="exportPDF()">Export PDF</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="view" id="view-settings">
+  <div class="section-title" style="margin-top:0;">Cycle settings</div>
+  <div class="card">
+    <div class="setting-row">
+      <div><div class="setting-label">Last period start</div><div class="setting-sub">Auto-calculates cycle day on open</div></div>
+      <input type="date" class="date-input" id="s-last-period" onchange="saveSetting('lastPeriod',this.value)">
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Typical cycle length</div><div class="setting-sub">Days — your median is 28</div></div>
+      <input type="number" class="date-input" id="s-cycle-len" min="21" max="50" style="width:68px;text-align:center;" onchange="saveSetting('cycleLength',this.value)">
+    </div>
+    <div class="setting-row" style="border:none;">
+      <div><div class="setting-label">Your name</div><div class="setting-sub">Appears on PDF export</div></div>
+      <input type="text" class="date-input" id="s-name" style="width:120px;" placeholder="Shaili" onchange="saveSetting('name',this.value)">
+    </div>
+  </div>
+  <div class="section-title">Data</div>
+  <div class="card">
+    <div class="setting-row">
+      <div class="setting-label">Total entries</div>
+      <div id="s-total" style="font-size:14px;color:var(--text2);">0</div>
+    </div>
+    <div class="setting-row" style="border:none;">
+      <div><div class="setting-label" style="color:var(--danger);">Clear all data</div><div class="setting-sub">Export PDF first — cannot be undone</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="confirmClear()" style="color:var(--danger);border-color:var(--danger);">Clear</button>
+    </div>
+  </div>
+  <div class="section-title">Add to iPhone home screen</div>
+  <div class="card">
+    <div style="font-size:13px;color:var(--text2);line-height:1.8;">Open in <strong style="color:var(--text);">Safari</strong> → Share button → <strong style="color:var(--text);">Add to Home Screen</strong> → Add. Opens full-screen like a native app.</div>
+  </div>
+  <div class="section-title">Phase reference</div>
+  <div class="card">
+    <div style="font-size:13px;color:var(--text2);line-height:2.4;">
+      Day 1–3 &nbsp;&nbsp;&nbsp; <span class="phase-pill phase-men" style="font-size:11px;">Menstrual</span><br>
+      Day 4–10 &nbsp;&nbsp; <span class="phase-pill phase-ef" style="font-size:11px;">Early follicular</span> <span class="window-badge window-anger" style="font-size:10px;margin-left:0;">Anger window</span><br>
+      Day 11–14 &nbsp; <span class="phase-pill phase-lf" style="font-size:11px;">Late follicular</span><br>
+      Day 13–16 &nbsp; <span class="phase-pill phase-ov" style="font-size:11px;">Ovulation</span><br>
+      Day 15–20 &nbsp; <span class="phase-pill phase-el" style="font-size:11px;">Early luteal</span><br>
+      Day 21+ &nbsp;&nbsp;&nbsp;&nbsp; <span class="phase-pill phase-ll" style="font-size:11px;">Late luteal</span> <span class="window-badge window-pmdd" style="font-size:10px;margin-left:0;">PMDD window</span>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+</div>
+
+</div><!-- /views -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div class="modal-title" id="modal-title">Entry</div>
+      <span class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('open')">Close</span>
+    </div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORE='cycleLog_v3',SSTORE='cycleSet_v3';
+function getLogs(){try{return JSON.parse(localStorage.getItem(STORE)||'[]');}catch{return[];}}
+function saveLogs(l){localStorage.setItem(STORE,JSON.stringify(l));}
+function getSettings(){const d={lastPeriod:'2026-04-06',cycleLength:29,name:'Shaili'};try{return Object.assign(d,JSON.parse(localStorage.getItem(SSTORE)||'{}'));}catch{return d;}}
+function saveSetting(k,v){const s=getSettings();s[k]=v;localStorage.setItem(SSTORE,JSON.stringify(s));updateHeader();showToast('Saved');}
+
+function phaseInfo(d){
+  if(d<=3)return{phase:'menstrual',label:'Menstrual',cls:'phase-men',win:'none',winLabel:'Stable'};
+  if(d<=10)return{phase:'early-follicular',label:'Early follicular',cls:'phase-ef',win:'anger',winLabel:'Anger / stress window'};
+  if(d<=14)return{phase:'late-follicular',label:'Late follicular',cls:'phase-lf',win:'none',winLabel:'Mood sensitivity possible'};
+  if(d<=16)return{phase:'ovulation',label:'Ovulation',cls:'phase-ov',win:'none',winLabel:'Mood sensitivity possible'};
+  if(d<=20)return{phase:'early-luteal',label:'Early luteal',cls:'phase-el',win:'none',winLabel:'Stable'};
+  return{phase:'late-luteal',label:'Late luteal',cls:'phase-ll',win:'pmdd',winLabel:'PMDD window'};
+}
+function getCycleDay(){const s=getSettings();const last=new Date(s.lastPeriod+'T00:00:00');const today=new Date();today.setHours(0,0,0,0);return Math.max(1,Math.floor((today-last)/86400000)+1);}
+function todayKey(){return new Date().toISOString().slice(0,10);}
+
+let FD={},MS={},FS={};
+
+function sel(el,field,val){
+  el.parentElement.querySelectorAll('.check-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');FD[field]=val;
+}
+function ms(el,field,val){
+  if(!MS[field])MS[field]=[];
+  if(el.classList.contains('selected')){el.classList.remove('selected');MS[field]=MS[field].filter(v=>v!==val);}
+  else{el.classList.add('selected');MS[field].push(val);}
+}
+function chip(el,field,val){
+  el.closest('.toggle-row').querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');FD[field]=val;
+}
+function toggleFlag(type,val){
+  FS[type]=val;
+  const yid=type==='illness'?'ill-yes':'allergy-yes';
+  const nid=type==='illness'?'ill-no':'allergy-no';
+  const did=type+'-detail';
+  document.getElementById(yid).className='flag-btn'+(val==='yes'?' flag-active-yes':'');
+  document.getElementById(nid).className='flag-btn'+(val==='no'?' flag-active-no':'');
+  const d=document.getElementById(did);
+  if(d)d.className='collapsible'+(val==='yes'?' open':'');
+}
+function resetForm(){
+  document.querySelectorAll('.check-option,.multi-option').forEach(e=>e.classList.remove('selected'));
+  document.querySelectorAll('.toggle-chip').forEach(e=>e.classList.remove('selected'));
+  document.querySelectorAll('.flag-btn').forEach(e=>e.className='flag-btn');
+  document.querySelectorAll('.collapsible').forEach(e=>e.classList.remove('open'));
+  ['stress-source','notes-field','pain-location','ill-rx','allergy-trigger'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  FD={};MS={};FS={};
+}
+
+function saveLog(e){
+  e.preventDefault();
+  const cd=getCycleDay();const s=getSettings();const pi=phaseInfo(cd);
+  const entry={
+    date:todayKey(),cycleDay:cd,phase:pi.phase,phaseLabel:pi.label,window:pi.win,
+    cycleLength:parseInt(s.cycleLength),...FD,
+    illSick:FS.illness||'no',illSx:MS.illSx||[],illMeds:MS.illMeds||[],
+    illRx:document.getElementById('ill-rx').value,
+    allergyPresent:FS.allergy||'no',allergySx:MS.allergySx||[],allergyMeds:MS.allergyMeds||[],
+    allergyTrigger:document.getElementById('allergy-trigger').value,
+    medNotes:MS.medNotes||[],painLocation:document.getElementById('pain-location').value,
+    stressSource:document.getElementById('stress-source').value,
+    notes:document.getElementById('notes-field').value,
+    savedAt:new Date().toISOString()
+  };
+  const logs=getLogs().filter(l=>l.date!==entry.date);
+  logs.unshift(entry);saveLogs(logs);resetForm();
+  showToast('Logged — great work');updateHeader();
+  setTimeout(()=>showView('history'),700);
+}
+
+function updateHeader(){
+  const s=getSettings();const cd=getCycleDay();const pi=phaseInfo(cd);
+  const g=id=>document.getElementById(id);
+  const today=new Date();
+  if(g('hdr-date'))g('hdr-date').textContent=today.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
+  if(g('hdr-day'))g('hdr-day').textContent=cd;
+  if(g('hdr-phase')){g('hdr-phase').textContent=pi.label;g('hdr-phase').className='phase-pill '+pi.cls;}
+  if(g('hdr-win')){g('hdr-win').textContent=pi.winLabel;g('hdr-win').className='window-badge window-'+pi.win;}
+  const cl=parseInt(s.cycleLength)||29;const pct=Math.min(100,(cd/cl)*100);
+  if(g('bar-fill'))g('bar-fill').style.width=pct+'%';
+  if(g('bar-marker'))g('bar-marker').style.left=pct+'%';
+  if(g('bar-next'))g('bar-next').textContent='Next period ~day '+cl;
+  const logs=getLogs();
+  if(g('logged-banner'))g('logged-banner').style.display=logs.some(l=>l.date===todayKey())?'block':'none';
+  if(g('s-total'))g('s-total').textContent=logs.length;
+  if(g('s-last-period'))g('s-last-period').value=s.lastPeriod;
+  if(g('s-cycle-len'))g('s-cycle-len').value=s.cycleLength;
+  if(g('s-name'))g('s-name').value=s.name||'Shaili';
+}
+
+const SW=['None','Mild','Moderate','Severe','Extreme'];
+const EW=['Normal','Slightly tired','Fatigued','Exhausted'];
+const SLW=['Good','Fair','Poor','Very poor'];
+const LW=['Absent','Low','Normal','Elevated','High'];
+const ACW=['Clear','Mild','Moderate','Severe'];
+const BW=['Normal','Slower','Sluggish','Diarrhea'];
+const BLEED={none:'None',spotting:'Spotting',light:'Light',medium:'Medium',heavy:'Heavy'};
+const ILLSEV={mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
+const ALLSEV={controlled:'Fully controlled',mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
+
+function sl(v,arr){if(v===undefined||v===null)return'—';return arr[v]||String(v);}
+
+function renderHistory(){
+  const logs=getLogs();const el=document.getElementById('history-list');
+  if(!logs.length){el.innerHTML='<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px;">○</div><div style="font-size:13.5px;line-height:1.7;color:var(--text3);">No entries yet.<br>Complete your first log tonight.</div></div>';return;}
+  el.innerHTML=logs.map((l,i)=>{
+    const pi=phaseInfo(l.cycleDay);
+    const tags=[
+      l.illSick==='yes'?'<span style="font-size:10px;background:rgba(212,117,107,.15);color:var(--danger);padding:2px 7px;border-radius:4px;">Sick</span>':'',
+      l.allergyPresent==='yes'?'<span style="font-size:10px;background:rgba(196,147,90,.15);color:var(--warning);padding:2px 7px;border-radius:4px;">Allergy</span>':''
+    ].filter(Boolean).join(' ');
+    return`<div class="history-entry" onclick="showDetail(${i})">
+      <div class="history-date">${l.date} &nbsp;·&nbsp; Day ${l.cycleDay} &nbsp;${tags}</div>
+      <div class="history-meta">
+        <span class="phase-pill ${pi.cls}" style="font-size:11px;padding:2px 8px;">${l.phaseLabel}</span>
+        ${l.window!=='none'?`<span class="window-badge window-${l.window}" style="font-size:10px;margin-left:0;">${l.window==='anger'?'Anger window':'PMDD window'}</span>`:''}
+      </div>
+      <div class="h-scores">
+        <span class="h-score">Irritability: <span>${sl(l.irritability,SW)}</span></span>
+        <span class="h-score">Sadness: <span>${sl(l.sadness,SW)}</span></span>
+        <span class="h-score">Energy: <span>${sl(l.energy,EW)}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showDetail(idx){
+  const l=getLogs()[idx];if(!l)return;
+  document.getElementById('modal-title').textContent=l.date+' — Day '+l.cycleDay;
+  const row=(k,v)=>{if(v===undefined||v===null||v===''||v==='—')return'';return`<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${v}</span></div>`;};
+  let html='';
+  html+=row('Bleeding',BLEED[l.bleeding]||l.bleeding);
+  if(l.illSick==='yes'){
+    html+=row('Illness',ILLSEV[l.illSeverity]||l.illSeverity);
+    if(l.illSx&&l.illSx.length)html+=row('Ill symptoms',l.illSx.join(', '));
+    if(l.illMeds&&l.illMeds.length)html+=row('Ill meds',l.illMeds.join(', '));
+    if(l.illRx)html+=row('Rx',l.illRx);
+  }
+  if(l.allergyPresent==='yes'){
+    html+=row('Allergy severity',ALLSEV[l.allergySev]||l.allergySev);
+    if(l.allergySx&&l.allergySx.length)html+=row('Allergy symptoms',l.allergySx.join(', '));
+    if(l.allergyTrigger)html+=row('Trigger',l.allergyTrigger);
+    if(l.allergyMeds&&l.allergyMeds.length)html+=row('Allergy meds',l.allergyMeds.join(', '));
+  }
+  html+=row('Irritability',sl(l.irritability,SW));
+  html+=row('Sadness',sl(l.sadness,SW));
+  html+=row('Anxiety',sl(l.anxiety,SW));
+  html+=row('Mood swings',sl(l.moodswings,SW));
+  html+=row('Negativity',sl(l.negativity,SW));
+  html+=row('Brain fog',sl(l.brainfog,SW));
+  html+=row('Energy',sl(l.energy,EW));
+  html+=row('Sleep',sl(l.sleep,SLW));
+  html+=row('Bloating',sl(l.bloating,SW));
+  html+=row('Appetite',l.appetite===-1?'Suppressed':sl(l.appetite,SW));
+  html+=row('Headache',sl(l.headache,SW));
+  html+=row('Pain',sl(l.pain,SW));
+  if(l.painLocation)html+=row('Pain location',l.painLocation);
+  html+=row('Acne',sl(l.acne,ACW));
+  html+=row('Bowel',sl(l.bowel,BW));
+  html+=row('Libido',sl(l.libido,LW));
+  html+=row('Work impact',sl(l.work,SW));
+  html+=row('Social',sl(l.social,SW));
+  html+=row('Exercise',l.exercise);html+=row('Caffeine',l.caffeine);html+=row('Sodium',l.sodium);html+=row('Mounjaro',l.mounjaro);
+  if(l.medNotes&&l.medNotes.length)html+=row('Med notes',l.medNotes.join(', '));
+  if(l.stressSource)html+=row('Stress',l.stressSource);
+  if(l.notes)html+=row('Notes',l.notes);
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeModal(e){if(e.target===document.getElementById('detail-modal'))document.getElementById('detail-modal').classList.remove('open');}
+
+let charts={};
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function renderDashboard(){
+  const logs=getLogs();
+  document.getElementById('m-entries').textContent=logs.length;
+  let streak=0;const today=new Date();today.setHours(0,0,0,0);
+  for(let i=0;i<90;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(logs.some(l=>l.date===d.toISOString().slice(0,10)))streak++;else break;}
+  document.getElementById('m-streak').textContent=streak;
+  const wAvg=(win,f)=>{const v=logs.filter(l=>l.window===win&&l[f]!==undefined&&l[f]!==null&&l[f]>=0).map(l=>l[f]);return v.length?(v.reduce((a,b)=>a+b,0)/v.length):null;};
+  const ai=wAvg('anger','irritability');const ps=wAvg('pmdd','sadness');
+  document.getElementById('m-anger').textContent=ai!==null?SW[Math.round(ai)]||ai.toFixed(1):'—';
+  document.getElementById('m-pmdd').textContent=ps!==null?SW[Math.round(ps)]||ps.toFixed(1):'—';
+  if(!logs.length){renderInsights(logs);return;}
+  const r60=logs.filter(l=>{const d=new Date(l.date);const c=new Date();c.setDate(c.getDate()-60);return d>=c;}).reverse();
+  const r30=logs.filter(l=>{const d=new Date(l.date);const c=new Date();c.setDate(c.getDate()-30);return d>=c;}).reverse();
+  renderCycleChart('ch-irr',r60,'irritability','#b8833a',SW);
+  renderCycleChart('ch-sad',r60,'sadness','#7a5a9e',SW);
+  renderCycleChart('ch-acne',r60,'acne','#c4756b',ACW);
+  renderCycleChart('ch-libido',r60,'libido','#4a8a78',LW);
+  dc('ch-energy');
+  if(r30.length){charts['ch-energy']=new Chart(document.getElementById('ch-energy'),{type:'line',data:{labels:r30.map(l=>'D'+l.cycleDay),datasets:[{label:'Energy',data:r30.map(l=>l.energy!==undefined?l.energy:null),borderColor:'#7a9e8e',backgroundColor:'transparent',tension:.35,spanGaps:true,borderWidth:1.5,pointRadius:2},{label:'Sleep',data:r30.map(l=>l.sleep!==undefined?l.sleep:null),borderColor:'#4a6a9e',backgroundColor:'transparent',tension:.35,spanGaps:true,borderWidth:1.5,pointRadius:2,borderDash:[4,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#918e89',font:{size:10},boxWidth:10,padding:10}}},scales:{y:{min:0,max:3,reverse:true,ticks:{color:'#555350',font:{size:9},callback:v=>['Best','Mild','Mod','Worst'][v]||''},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#555350',font:{size:9},maxTicksLimit:10},grid:{display:false}}}}});}
+  dc('ch-work');
+  const phases=['Menstrual','Early follicular','Late follicular','Ovulation','Early luteal','Late luteal'];
+  const pColors=['#8b4a4a','#b8833a','#7a9040','#4a8a78','#4a6a9e','#7a5a9e'];
+  const pw=phases.map(ph=>{const v=logs.filter(l=>l.phaseLabel===ph&&l.work!==undefined);return v.length?v.reduce((a,b)=>a+b.work,0)/v.length:null;});
+  charts['ch-work']=new Chart(document.getElementById('ch-work'),{type:'bar',data:{labels:['Men','Early F','Late F','Ov','Early L','Late L'],datasets:[{data:pw,backgroundColor:pColors,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(v===null)return'No data';return SW[Math.round(v)]||'';}}}},scales:{y:{min:0,max:4,ticks:{color:'#555350',font:{size:9},callback:v=>SW[v]||''},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#555350',font:{size:9}},grid:{display:false}}}}});
+  renderInsights(logs);
+}
+
+function renderCycleChart(id,logs,field,color,labelArr){
+  dc(id);
+  const byDay={};
+  logs.forEach(l=>{if(l[field]!==undefined&&l[field]!==null&&l[field]>=0){if(!byDay[l.cycleDay])byDay[l.cycleDay]=[];byDay[l.cycleDay].push(l[field]);}});
+  const days=Array.from({length:30},(_,i)=>i+1);
+  const avgs=days.map(d=>byDay[d]?byDay[d].reduce((a,b)=>a+b,0)/byDay[d].length:null);
+  const ptColors=days.map(d=>{const p=phaseInfo(d);return p.win==='anger'?'#b8833a':p.win==='pmdd'?'#7a5a9e':color;});
+  charts[id]=new Chart(document.getElementById(id),{type:'line',data:{labels:days.map(d=>'D'+d),datasets:[{data:avgs,borderColor:color,backgroundColor:'transparent',tension:.4,spanGaps:false,borderWidth:2,pointRadius:3,pointBackgroundColor:ptColors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=ctx.parsed.y;if(v===null)return'No data';return labelArr[Math.round(v)]||v.toFixed(1);}}}},scales:{y:{min:0,max:labelArr.length-1,ticks:{color:'#555350',font:{size:9},callback:v=>labelArr[v]||''},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#555350',font:{size:9},maxTicksLimit:15},grid:{display:false}}}}});
+}
+
+function renderInsights(logs){
+  const sec=document.getElementById('insights-section');
+  if(logs.length<14){sec.innerHTML='<div class="card-sm" style="font-size:13px;color:var(--text3);">Log at least 14 days to see pattern insights.</div>';return;}
+  const wl=win=>logs.filter(l=>l.window===win);
+  const avg=(arr,f)=>{const v=arr.map(l=>l[f]).filter(x=>x!==undefined&&x!==null&&x>=0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  let html='<div class="section-title">Pattern insights</div>';
+  const ai=avg(wl('anger'),'irritability');const pi=avg(wl('pmdd'),'irritability');const ps=avg(wl('pmdd'),'sadness');const si=avg(wl('none'),'irritability');
+  if(ai!==null)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid #b8833a;">Anger window: avg irritability is <strong style="color:var(--text);">${SW[Math.round(ai)]}</strong></div>`;
+  if(ps!==null)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid #7a5a9e;">PMDD window: avg sadness is <strong style="color:var(--text);">${SW[Math.round(ps)]}</strong></div>`;
+  if(pi!==null)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid #7a5a9e;">PMDD window: avg irritability is <strong style="color:var(--text);">${SW[Math.round(pi)]}</strong></div>`;
+  if(ai!==null&&si!==null&&ai>si+0.5)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid var(--accent);">Your irritability in the anger window is measurably higher than stable phases — consistent with post-menstrual estrogen-floor pattern.</div>`;
+  const illN=logs.filter(l=>l.illSick==='yes').length;
+  const algN=logs.filter(l=>l.allergyPresent==='yes').length;
+  if(illN>0)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid var(--danger);">${illN} sick day${illN>1?'s':''} logged — flagged in PDF export for clinical context.</div>`;
+  if(algN>0)html+=`<div class="card-sm" style="font-size:13px;color:var(--text2);border-left:3px solid var(--warning);">${algN} day${algN>1?'s':''} with allergy breakthrough logged.</div>`;
+  sec.innerHTML=html;
+}
+
+function exportPDF(){
+  const logs=getLogs();if(!logs.length){showToast('No entries to export');return;}
+  const s=getSettings();const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});const name=s.name||'Shaili';
+  let y=20;
+  const nl=()=>{y+=5;if(y>275){doc.addPage();y=15;}};
+  doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text(name+' — Cycle Symptom Log',20,y);nl();
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(130,130,130);
+  doc.text('Generated '+new Date().toLocaleDateString('en-CA')+' · '+logs.length+' entries · Cycle length '+s.cycleLength+' days',20,y);nl();
+  doc.text('Hormonal symptom tracking log — for clinical review (PMDD assessment)',20,y);nl();nl();
+  doc.setDrawColor(200,200,200);doc.line(20,y,190,y);nl();
+  logs.slice(0,80).forEach(l=>{
+    if(y>265){doc.addPage();y=15;}
+    const pi=phaseInfo(l.cycleDay);
+    const winTag=l.window!=='none'?' ['+( l.window==='anger'?'Anger window':'PMDD window')+']':'';
+    const sickTag=l.illSick==='yes'?' [SICK]':'';
+    const algTag=l.allergyPresent==='yes'?' [ALLERGY]':'';
+    doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+    doc.text(l.date+'  ·  Day '+l.cycleDay+'  ·  '+l.phaseLabel+winTag+sickTag+algTag,20,y);nl();
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);
+    const f=[];
+    if(l.bleeding)f.push('Bleeding: '+(BLEED[l.bleeding]||l.bleeding));
+    if(l.irritability!==undefined)f.push('Irritability: '+(SW[l.irritability]||l.irritability));
+    if(l.sadness!==undefined)f.push('Sadness: '+(SW[l.sadness]||l.sadness));
+    if(l.anxiety!==undefined)f.push('Anxiety: '+(SW[l.anxiety]||l.anxiety));
+    if(l.energy!==undefined)f.push('Energy: '+(EW[l.energy]||l.energy));
+    if(l.sleep!==undefined)f.push('Sleep: '+(SLW[l.sleep]||l.sleep));
+    if(l.brainfog!==undefined)f.push('Brain fog: '+(SW[l.brainfog]||l.brainfog));
+    if(l.work!==undefined)f.push('Work: '+(SW[l.work]||l.work));
+    if(l.acne!==undefined)f.push('Acne: '+(ACW[l.acne]||l.acne));
+    if(l.libido!==undefined)f.push('Libido: '+(LW[l.libido]||l.libido));
+    if(l.pain!==undefined)f.push('Pain: '+(SW[l.pain]||l.pain));
+    if(l.bloating!==undefined)f.push('Bloating: '+(SW[l.bloating]||l.bloating));
+    [f.slice(0,4),f.slice(4,8),f.slice(8)].forEach(chunk=>{if(chunk.length){doc.text(chunk.join('   '),22,y);nl();}});
+    if(l.illSick==='yes'){doc.setTextColor(180,60,60);const il=['Sick: '+(ILLSEV[l.illSeverity]||''),l.illSx&&l.illSx.length?l.illSx.join(', '):'',l.illMeds&&l.illMeds.length?'Meds: '+l.illMeds.join(', '):''].filter(Boolean).join(' | ');doc.text(il,22,y);nl();doc.setTextColor(80,80,80);}
+    if(l.allergyPresent==='yes'){doc.setTextColor(160,100,40);const al=['Allergy: '+(ALLSEV[l.allergySev]||''),l.allergyTrigger?'Trigger: '+l.allergyTrigger:''].filter(Boolean).join(' | ');doc.text(al,22,y);nl();doc.setTextColor(80,80,80);}
+    if(l.stressSource){doc.text('Stress: '+l.stressSource,22,y);nl();}
+    if(l.notes){doc.text('Notes: '+l.notes,22,y);nl();}
+    doc.setDrawColor(230,230,230);doc.line(20,y,190,y);nl();
+  });
+  doc.save(name+'_cycle_log_'+new Date().toISOString().slice(0,10)+'.pdf');
+  showToast('PDF downloaded');
+}
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelector('[onclick="showView(\''+name+'\')"]').classList.add('active');
+  if(name==='history')renderHistory();
+  if(name==='dashboard')renderDashboard();
+  if(name==='log')updateHeader();
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function confirmClear(){if(confirm('Delete all logged entries? This cannot be undone.\n\nExport a PDF first if you want a backup.')){saveLogs([]);showToast('All entries cleared');updateHeader();}}
+
+updateHeader();
+</script>
+</body>
+</html>
