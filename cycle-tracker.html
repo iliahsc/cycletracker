@@ -152,6 +152,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
     <div style="font-size:12px;color:var(--text3);margin-bottom:9px;">Submitting again will overwrite today's entry.</div>
     <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logged-banner').style.display='none'">Log anyway</button>
   </div>
+
+  <!-- Period reset banner -->
+  <div id="period-reset-banner" style="display:none;background:rgba(139,74,74,.12);border:1px solid rgba(139,74,74,.3);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;font-size:12px;color:#e09090;line-height:1.6;"></div>
+
+  <!-- Streak banner -->
+  <div id="streak-banner" style="display:none;background:rgba(122,90,158,.1);border:1px solid rgba(122,90,158,.2);border-radius:var(--r);padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.5;"></div>
   <form id="log-form" onsubmit="saveLog(event)">
 
   <!-- DAY TYPE -->
@@ -462,7 +468,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
     <div class="cgl" style="margin-bottom:9px;">Medication notes <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
     <div id="multi-medNotes">
       <div class="multi-option" onclick="ms(this,'medNotes','all-normal')"><div class="multi-box"></div><div class="multi-text">All supplements and meds taken as normal</div></div>
-      <div class="multi-option" onclick="ms(this,'medNotes','missed-supp')"><div class="multi-box"></div><div class="multi-text">Missed a supplement</div></div>
+      <div class="multi-option" onclick="ms(this,'medNotes','missed-supp');toggleSuppNote(this)"><div class="multi-box"></div><div class="multi-text">Missed a supplement</div></div>
+      <div id="missed-supp-note-wrap" style="display:none;padding:8px 0 2px;">
+        <input type="text" class="text-input-sm" id="missed-supp-note" placeholder="Which supplement? e.g. Magnesium, Ashwagandha…">
+      </div>
       <div class="multi-option" onclick="ms(this,'medNotes','missed-rx')"><div class="multi-box"></div><div class="multi-text">Missed a prescription</div></div>
       <div class="multi-option" onclick="ms(this,'medNotes','mounjaro-side')"><div class="multi-box"></div><div class="multi-text">Mounjaro side effects today</div></div>
       <div class="multi-option" onclick="ms(this,'medNotes','extra-pain-relief')"><div class="multi-box"></div><div class="multi-text">Took extra pain relief (Tylenol / Advil)</div></div>
@@ -507,7 +516,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 <div class="view" id="view-history">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
     <div class="section-title" style="margin:0;">Log history</div>
-    <button class="btn btn-secondary btn-sm" onclick="exportPDF()">Export PDF</button>
+    <button class="btn btn-secondary btn-sm" onclick="openExportModal()">Export PDF</button>
   </div>
 
   <!-- 7-DAY CALENDAR -->
@@ -542,6 +551,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
       <input type="text" class="date-input" id="s-name" style="width:120px;" placeholder="Shaili" onchange="saveSetting('name',this.value)">
     </div>
   </div>
+  <div class="section-title">Medications</div>
+  <div class="card">
+    <div class="setting-row" style="border:none;">
+      <div><div class="setting-label">Mounjaro current dose</div><div class="setting-sub">mg — stamped on injection log entries</div></div>
+      <input type="number" class="date-input" id="s-mounjaro-dose" min="2.5" max="15" step="2.5" style="width:68px;text-align:center;" onchange="saveSetting('mounjaroDose',this.value)" placeholder="10">
+    </div>
+  </div>
   <div class="section-title">Data</div>
   <div class="card">
     <div class="setting-row">
@@ -573,6 +589,48 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 
 </div><!-- /views -->
 </div><!-- /app -->
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal" onclick="closeExportModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title" style="margin:0;">Export PDF</div>
+      <span class="modal-close" onclick="document.getElementById('export-modal').classList.remove('open')">Close</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">Choose a date range or export everything.</div>
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <label style="font-size:13px;color:var(--text2);">From
+          <input type="date" class="date-input" id="export-from" style="display:block;margin-top:5px;width:100%;">
+        </label>
+        <label style="font-size:13px;color:var(--text2);">To
+          <input type="date" class="date-input" id="export-to" style="display:block;margin-top:5px;width:100%;">
+        </label>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="exportPDFRange()">Export selected range</button>
+    <button class="btn btn-secondary" onclick="exportPDF()">Export all entries</button>
+    <div style="height:4px;"></div>
+  </div>
+</div>
+
+<!-- PERIOD END PROMPT -->
+<div class="modal-overlay" id="period-end-modal" onclick="closePeriodEndModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="modal-title" style="margin:0;">Period ended</div>
+      <span class="modal-close" onclick="document.getElementById('period-end-modal').classList.remove('open')">Close</span>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">
+      Your period appears to have ended. This is a good time to export your cycle PDF — it captures the complete record of the cycle that just finished.
+    </div>
+    <button class="btn btn-primary" onclick="exportPDF();document.getElementById('period-end-modal').classList.remove('open');">Export cycle PDF now</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('period-end-modal').classList.remove('open')">Remind me later</button>
+    <div style="height:4px;"></div>
+  </div>
+</div>
 
 <!-- RETRO LOG MODAL -->
 <div class="modal-overlay" id="retro-modal" onclick="closeRetroModal(event)">
@@ -624,7 +682,7 @@ function getLogs(){
   }catch{return[];}
 }
 function saveLogs(l){localStorage.setItem(STORE,JSON.stringify(l));}
-function getSettings(){const d={lastPeriod:'2026-04-06',cycleLength:29,name:'Shaili'};try{return Object.assign(d,JSON.parse(localStorage.getItem(SSTORE)||'{}'));}catch{return d;}}
+function getSettings(){const d={lastPeriod:'2026-04-06',cycleLength:29,name:'Shaili',mounjaroDose:10,cycleHistory:[]};try{return Object.assign(d,JSON.parse(localStorage.getItem(SSTORE)||'{}'));}catch{return d;}}
 function saveSetting(k,v){const s=getSettings();s[k]=v;localStorage.setItem(SSTORE,JSON.stringify(s));updateHeader();showToast('Saved');}
 
 function phaseInfo(d){
@@ -643,6 +701,72 @@ let FD={},MS={},FS={};
 function sel(el,field,val){
   el.parentElement.querySelectorAll('.check-option').forEach(e=>e.classList.remove('selected'));
   el.classList.add('selected');FD[field]=val;
+  if(field==='bleeding') checkPeriodStart(val);
+}
+
+function checkPeriodStart(bleedVal){
+  // Only trigger on real flow — not spotting, not none
+  if(!['light','medium','heavy'].includes(bleedVal)) return;
+  const s=getSettings();
+  const today=todayKey();
+  const lastPeriod=new Date(s.lastPeriod+'T00:00:00');
+  const todayDate=new Date(today+'T00:00:00');
+  const daysSinceLast=Math.floor((todayDate-lastPeriod)/86400000);
+  // Only reset if it's been at least 18 days — avoids mid-period re-trigger
+  if(daysSinceLast<18) return;
+  // Check yesterday wasn't also a flow day (avoid re-triggering on day 2/3)
+  const logs=getLogs();
+  const yesterday=new Date(todayDate);yesterday.setDate(yesterday.getDate()-1);
+  const yKey=yesterday.toISOString().slice(0,10);
+  const yLog=logs.find(l=>l.date===yKey);
+  if(yLog&&['light','medium','heavy'].includes(yLog.bleeding)) return;
+  // This looks like day 1 — update period start and learn cycle length
+  const prevStart=s.lastPeriod;
+  const actualCycleLength=daysSinceLast;
+  // Update cycle history (keep last 6)
+  const history=Array.isArray(s.cycleHistory)?s.cycleHistory:[];
+  history.push({start:prevStart,length:actualCycleLength});
+  if(history.length>6) history.shift();
+  // Calculate new average cycle length from history
+  const avgLength=Math.round(history.reduce((a,b)=>a+b.length,0)/history.length);
+  const clampedAvg=Math.max(21,Math.min(45,avgLength));
+  // Save all updates
+  const newSettings=getSettings();
+  newSettings.lastPeriod=today;
+  newSettings.cycleLength=clampedAvg;
+  newSettings.cycleHistory=history;
+  localStorage.setItem(SSTORE,JSON.stringify(newSettings));
+  updateHeader();
+  // Show subtle confirmation banner
+  showPeriodResetBanner(daysSinceLast,clampedAvg);
+}
+
+function showPeriodResetBanner(prevLength,newAvg){
+  const banner=document.getElementById('period-reset-banner');
+  if(!banner) return;
+  banner.innerHTML=`<span style="color:var(--accent);font-weight:500;">Period start detected</span> — cycle day reset to 1. Last cycle was ${prevLength} days. Working average updated to ${newAvg} days.`;
+  banner.style.display='block';
+  setTimeout(()=>{banner.style.display='none';},6000);
+}
+
+function checkPeriodEnd(bleedVal){
+  // Trigger PDF prompt when logging None after 2+ consecutive flow days
+  if(bleedVal!=='none') return;
+  const logs=getLogs();
+  const today=new Date();today.setHours(0,0,0,0);
+  // Check last 2 days for flow
+  let flowDays=0;
+  for(let i=1;i<=4;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    const log=logs.find(l=>l.date===key);
+    if(log&&['light','medium','heavy'].includes(log.bleeding)) flowDays++;
+    else break;
+  }
+  if(flowDays>=2){
+    // Show PDF export prompt after save — set flag
+    window._showPeriodEndPrompt=true;
+  }
 }
 function ms(el,field,val){
   if(!MS[field])MS[field]=[];
@@ -747,7 +871,9 @@ function resetForm(){
   document.querySelectorAll('.toggle-chip').forEach(e=>e.classList.remove('selected'));
   document.querySelectorAll('.flag-btn').forEach(e=>e.className='flag-btn');
   document.querySelectorAll('.collapsible').forEach(e=>e.classList.remove('open'));
-  ['stress-source','notes-field','pain-location','ill-rx','allergy-trigger'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['stress-source','notes-field','pain-location','ill-rx','allergy-trigger','missed-supp-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const suppWrap=document.getElementById('missed-supp-note-wrap');
+  if(suppWrap) suppWrap.style.display='none';
   FD={};MS={};FS={};
   updateWorkLabel(null);
 }
@@ -755,9 +881,15 @@ function resetForm(){
 function saveLog(e){
   e.preventDefault();
   const cd=getCycleDay();const s=getSettings();const pi=phaseInfo(cd);
+  // Check period end before saving (needs yesterday's logs still intact)
+  if(FD.bleeding==='none') checkPeriodEnd('none');
+  const mounjaroDose=FD.mounjaro==='yes'?(s.mounjaroDose||10):null;
+  const missedSuppNote=document.getElementById('missed-supp-note')?.value||'';
   const entry={
     date:todayKey(),cycleDay:cd,phase:pi.phase,phaseLabel:pi.label,window:pi.win,
     cycleLength:parseInt(s.cycleLength),...FD,
+    mounjaroDose,
+    missedSuppNote,
     illSick:FS.illness||'no',illSx:MS.illSx||[],illMeds:MS.illMeds||[],
     illRx:document.getElementById('ill-rx').value,
     allergyPresent:FS.allergy||'no',allergySx:MS.allergySx||[],allergyMeds:MS.allergyMeds||[],
@@ -772,7 +904,13 @@ function saveLog(e){
   logs.sort((a,b)=>b.date.localeCompare(a.date));
   saveLogs(logs);resetForm();
   showToast('Logged — great work');updateHeader();
-  setTimeout(()=>showView('history'),700);
+  // Show period end PDF prompt if flagged
+  if(window._showPeriodEndPrompt){
+    window._showPeriodEndPrompt=false;
+    setTimeout(()=>showPeriodEndPrompt(),800);
+  } else {
+    setTimeout(()=>showView('history'),700);
+  }
 }
 
 function updateHeader(){
@@ -793,6 +931,8 @@ function updateHeader(){
   if(g('s-last-period'))g('s-last-period').value=s.lastPeriod;
   if(g('s-cycle-len'))g('s-cycle-len').value=s.cycleLength;
   if(g('s-name'))g('s-name').value=s.name||'Shaili';
+  if(g('s-mounjaro-dose'))g('s-mounjaro-dose').value=s.mounjaroDose||10;
+  checkStreakBanner();
 }
 
 function sl(v,arr){if(v===undefined||v===null)return'—';return arr[v]||String(v);}
@@ -1300,6 +1440,84 @@ function showDetail(dateKey){
 
 function closeModal(e){if(e.target===document.getElementById('detail-modal'))document.getElementById('detail-modal').classList.remove('open');}
 
+function toggleSuppNote(el){
+  const wrap=document.getElementById('missed-supp-note-wrap');
+  if(!wrap) return;
+  // ms() has already run and toggled the class before this fires
+  // so contains('selected') = true means it was just selected → show
+  wrap.style.display=el.classList.contains('selected')?'block':'none';
+  if(!el.classList.contains('selected')){
+    const input=document.getElementById('missed-supp-note');
+    if(input) input.value='';
+  }
+}
+
+function showPeriodEndPrompt(){
+  showView('history');
+  document.getElementById('period-end-modal').classList.add('open');
+}
+
+function closePeriodEndModal(e){
+  if(e.target===document.getElementById('period-end-modal'))
+    document.getElementById('period-end-modal').classList.remove('open');
+}
+
+function openExportModal(){
+  const logs=getLogs();
+  const today=new Date().toISOString().slice(0,10);
+  // Default: last 35 days (covers one full cycle)
+  const from=new Date();from.setDate(from.getDate()-35);
+  const fromKey=from.toISOString().slice(0,10);
+  const ef=document.getElementById('export-from');
+  const et=document.getElementById('export-to');
+  if(ef) ef.value=fromKey;
+  if(et) et.value=today;
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExportModal(e){
+  if(e.target===document.getElementById('export-modal'))
+    document.getElementById('export-modal').classList.remove('open');
+}
+
+function exportPDFRange(){
+  const from=document.getElementById('export-from')?.value;
+  const to=document.getElementById('export-to')?.value;
+  document.getElementById('export-modal').classList.remove('open');
+  exportPDF(from,to);
+}
+
+function checkStreakBanner(){
+  const banner=document.getElementById('streak-banner');
+  if(!banner) return;
+  const logs=getLogs();
+  if(logs.length<3){banner.style.display='none';return;}
+  // Check last 3+ consecutive days for elevated mood symptoms
+  const today=new Date();today.setHours(0,0,0,0);
+  let streak=0;let symptom='';
+  for(let i=0;i<7;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    const log=logs.find(l=>l.date===key);
+    if(!log) break;
+    const irr=log.irritability!==undefined?log.irritability:-1;
+    const sad=log.sadness!==undefined?log.sadness:-1;
+    if(irr>=2||sad>=2){
+      streak++;
+      if(irr>=sad&&irr>=2) symptom='irritability';
+      else if(sad>=2) symptom='low mood';
+    } else break;
+  }
+  if(streak>=3){
+    const currentWin=phaseInfo(getCycleDay()).win;
+    const ctx=currentWin==='anger'?'anger / stress window':currentWin==='pmdd'?'PMDD window':'';
+    banner.innerHTML=`Elevated ${symptom} logged for ${streak} consecutive days${ctx?' — consistent with your '+ctx:''}.`;
+    banner.style.display='block';
+  } else {
+    banner.style.display='none';
+  }
+}
+
 function editEntry(dateKey){
   const l=getLogs().find(x=>x.date===dateKey);
   if(!l) return;
@@ -1422,8 +1640,11 @@ function renderInsights(logs){
   sec.innerHTML=html;
 }
 
-function exportPDF(){
-  const logs=getLogs();if(!logs.length){showToast('No entries to export');return;}
+function exportPDF(fromDate,toDate){
+  let logs=getLogs();if(!logs.length){showToast('No entries to export');return;}
+  if(fromDate) logs=logs.filter(l=>l.date>=fromDate);
+  if(toDate) logs=logs.filter(l=>l.date<=toDate);
+  if(!logs.length){showToast('No entries in that date range');return;}
   const s=getSettings();const{jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});const name=s.name||'Shaili';
   let y=20;
@@ -1431,10 +1652,11 @@ function exportPDF(){
   doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
   doc.text(name+' — Cycle Symptom Log',20,y);nl();
   doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(130,130,130);
-  doc.text('Generated '+new Date().toLocaleDateString('en-CA')+' · '+logs.length+' entries · Cycle length '+s.cycleLength+' days',20,y);nl();
+  const rangeLabel=fromDate?`${fromDate} to ${toDate||'today'}`:'All entries';
+  doc.text('Generated '+new Date().toLocaleDateString('en-CA')+' · '+logs.length+' entries · '+rangeLabel,20,y);nl();
   doc.text('Hormonal symptom tracking log — for clinical review (PMDD assessment)',20,y);nl();nl();
   doc.setDrawColor(200,200,200);doc.line(20,y,190,y);nl();
-  logs.slice(0,80).forEach(l=>{
+  logs.slice(0,500).forEach(l=>{
     if(y>265){doc.addPage();y=15;}
     const pi=phaseInfo(l.cycleDay);
     const winTag=l.window!=='none'?' ['+( l.window==='anger'?'Anger window':'PMDD window')+']':'';
@@ -1459,13 +1681,16 @@ function exportPDF(){
     if(l.pain!==undefined)f.push('Pain: '+(SW[l.pain]||l.pain));
     if(l.bloating!==undefined)f.push('Bloating: '+(SW[l.bloating]||l.bloating));
     [f.slice(0,4),f.slice(4,8),f.slice(8)].forEach(chunk=>{if(chunk.length){doc.text(chunk.join('   '),22,y);nl();}});
+    if(l.mounjaro==='yes'&&l.mounjaroDose){doc.setTextColor(106,142,174);doc.text('Mounjaro: '+l.mounjaroDose+'mg',22,y);nl();doc.setTextColor(80,80,80);}
+    if(l.medNotes&&l.medNotes.includes('missed-supp')&&l.missedSuppNote){doc.text('Missed supplement: '+l.missedSuppNote,22,y);nl();}
     if(l.illSick==='yes'){doc.setTextColor(180,60,60);const il=['Sick: '+(ILLSEV[l.illSeverity]||''),l.illSx&&l.illSx.length?l.illSx.join(', '):'',l.illMeds&&l.illMeds.length?'Meds: '+l.illMeds.join(', '):''].filter(Boolean).join(' | ');doc.text(il,22,y);nl();doc.setTextColor(80,80,80);}
     if(l.allergyPresent==='yes'){doc.setTextColor(160,100,40);const al=['Allergy: '+(ALLSEV[l.allergySev]||''),l.allergyTrigger?'Trigger: '+l.allergyTrigger:''].filter(Boolean).join(' | ');doc.text(al,22,y);nl();doc.setTextColor(80,80,80);}
     if(l.stressSource){doc.text('Stress: '+l.stressSource,22,y);nl();}
     if(l.notes){doc.text('Notes: '+l.notes,22,y);nl();}
     doc.setDrawColor(230,230,230);doc.line(20,y,190,y);nl();
   });
-  doc.save(name+'_cycle_log_'+new Date().toISOString().slice(0,10)+'.pdf');
+  const suffix=fromDate?`_${fromDate}_to_${toDate||'today'}`:'_all';
+  doc.save(name+'_cycle_log'+suffix+'_'+new Date().toISOString().slice(0,10)+'.pdf');
   showToast('PDF downloaded');
 }
 
