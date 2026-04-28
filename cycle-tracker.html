@@ -856,59 +856,274 @@ function openRetroLog(dateKey){
 
 function buildRetroForm(cd,pi,existing){
   const e=existing||{};
-  const sel=(field,val,label,group)=>{
+  const s=(field,val,label)=>{
     const checked=e[field]===val?'selected':'';
-    return`<label class="check-option ${checked}" onclick="retroSel(this,'${field}',${typeof val==='string'?`'${val}'`:val})"><div class="check-box"></div><div class="check-text">${label}</div></label>`;
+    const valStr=typeof val==='string'?`'${val}'`:val;
+    return`<label class="check-option ${checked}" onclick="retroSel(this,'${field}',${valStr})"><div class="check-box"></div><div class="check-text">${label}</div></label>`;
   };
+  const ms=(field,val,label,sub)=>{
+    const arr=e[field]||[];
+    const checked=arr.includes(val)?'selected':'';
+    const sub2=sub?`<small style="color:var(--warning);">${sub}</small>`:'';
+    return`<div class="multi-option ${checked}" onclick="retroMs(this,'${field}','${val}')"><div class="multi-box"></div><div class="multi-text">${label}${sub2}</div></div>`;
+  };
+  const chip=(field,val,label)=>{
+    const checked=e[field]===val?'selected':'';
+    return`<button type="button" class="toggle-chip ${checked}" onclick="retroChip(this,'${field}','${val}')">${label}</button>`;
+  };
+  const illOpen=e.illSick==='yes'?'open':'';
+  const algOpen=e.allergyPresent==='yes'?'open':'';
   return`
-  <div class="cgl" style="margin-top:4px;">Irritability / anger</div>
+  <!-- BLEEDING -->
+  <div class="cgl" style="margin-top:4px;">Bleeding</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('irritability',0,'None — calm and even-tempered')}
-    ${sel('irritability',1,'Mild — slightly short-tempered')}
-    ${sel('irritability',2,'Moderate — snapped at someone or had to manage it')}
-    ${sel('irritability',3,'Severe — significant outbursts')}
-    ${sel('irritability',4,'Extreme — out of character, unable to function')}
+    ${s('bleeding','none','None — no bleeding')}
+    ${s('bleeding','spotting','Spotting<small>Light staining, no product needed</small>')}
+    ${s('bleeding','light','Light<small>Liner or light product, less than every 4 hrs</small>')}
+    ${s('bleeding','medium','Medium<small>Regular product, every 3–4 hrs</small>')}
+    ${s('bleeding','heavy','Heavy<small>Changing every 1–2 hrs or soaking through</small>')}
+  </div>
+
+  <!-- ILLNESS -->
+  <div class="cgl">Illness</div>
+  <div class="card" style="margin-bottom:10px;">
+    <div class="flag-row">
+      <div class="flag-label">Sick that day?</div>
+      <div class="flag-toggle">
+        <button type="button" class="flag-btn${e.illSick!=='yes'?' flag-active-no':''}" id="r-ill-no" onclick="retroToggleFlag('illness','no')">No</button>
+        <button type="button" class="flag-btn${e.illSick==='yes'?' flag-active-yes':''}" id="r-ill-yes" onclick="retroToggleFlag('illness','yes')">Yes</button>
+      </div>
+    </div>
+    <div class="collapsible ${illOpen}" id="r-illness-detail">
+      <div class="cgl">Severity</div>
+      ${s('illSeverity','mild','Mild — minor symptoms, fully functional')}
+      ${s('illSeverity','moderate','Moderate — noticeably unwell')}
+      ${s('illSeverity','significant','Significant — affected the whole day')}
+      ${s('illSeverity','severe','Severe — stayed home / cancelled plans')}
+      <div class="divider"></div>
+      <div class="cgl">Symptoms <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      ${ms('illSx','sore-throat','Sore throat')}
+      ${ms('illSx','congestion','Congestion / runny nose')}
+      ${ms('illSx','cough','Cough')}
+      ${ms('illSx','fever','Fever / chills')}
+      ${ms('illSx','body-aches','Body aches')}
+      ${ms('illSx','nausea-gi','Nausea / GI upset')}
+      ${ms('illSx','fatigue-ill','Fatigue beyond normal')}
+      ${ms('illSx','headache-ill','Headache (illness-related)')}
+      <div class="divider"></div>
+      <div class="cgl">Medication taken <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      ${ms('illMeds','none','None')}
+      ${ms('illMeds','echinacea','Echinacea')}
+      ${ms('illMeds','oil-oregano','Oil of oregano')}
+      ${ms('illMeds','elderberry','Elderberry')}
+      ${ms('illMeds','tylenol','Tylenol / acetaminophen')}
+      ${ms('illMeds','ibuprofen','Ibuprofen / Advil','Reduces Spironolactone efficacy')}
+      ${ms('illMeds','tylenol-cold','Tylenol Cold & Flu / NyQuil')}
+      ${ms('illMeds','antihistamine','Antihistamine (Benadryl etc)','Interaction risk with Allegra')}
+      ${ms('illMeds','decongestant','Decongestant (Sudafed etc)','May counteract Spironolactone')}
+      ${ms('illMeds','antibiotic','Prescribed antibiotic')}
+      <div style="margin-top:8px;"><input type="text" class="text-input-sm" id="r-ill-rx" placeholder="Prescription name if applicable" value="${e.illRx||''}"></div>
+    </div>
+  </div>
+
+  <!-- ALLERGIES -->
+  <div class="cgl">Allergies</div>
+  <div class="card" style="margin-bottom:10px;">
+    <div class="flag-row">
+      <div class="flag-label">Allergy symptoms?</div>
+      <div class="flag-toggle">
+        <button type="button" class="flag-btn${e.allergyPresent!=='yes'?' flag-active-no':''}" id="r-allergy-no" onclick="retroToggleFlag('allergy','no')">No</button>
+        <button type="button" class="flag-btn${e.allergyPresent==='yes'?' flag-active-yes':''}" id="r-allergy-yes" onclick="retroToggleFlag('allergy','yes')">Yes</button>
+      </div>
+    </div>
+    <div class="collapsible ${algOpen}" id="r-allergy-detail">
+      <div class="cgl">Breakthrough severity</div>
+      ${s('allergySev','controlled','None — fully controlled')}
+      ${s('allergySev','mild','Mild — minor breakthrough')}
+      ${s('allergySev','moderate','Moderate — noticeable symptoms')}
+      ${s('allergySev','significant','Significant — affecting comfort')}
+      ${s('allergySev','severe','Severe — poorly controlled')}
+      <div class="divider"></div>
+      <div class="cgl">Symptoms <span style="font-size:11px;color:var(--text3);font-weight:400;">— tap all that apply</span></div>
+      ${ms('allergySx','sneezing','Sneezing')}
+      ${ms('allergySx','itchy-eyes','Itchy / watery eyes')}
+      ${ms('allergySx','nasal-congestion','Nasal congestion')}
+      ${ms('allergySx','runny-nose','Runny nose')}
+      ${ms('allergySx','itchy-skin','Itchy skin / hives')}
+      ${ms('allergySx','throat-irritation','Throat irritation')}
+      ${ms('allergySx','fatigue-allergy','Fatigue from allergies')}
+      <div style="margin-top:8px;"><input type="text" class="text-input-sm" id="r-allergy-trigger" placeholder="Trigger if known" value="${e.allergyTrigger||''}"></div>
+    </div>
+  </div>
+
+  <!-- MOOD -->
+  <div class="cgl">Irritability / anger</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('irritability',0,'None — felt calm and even-tempered')}
+    ${s('irritability',1,'Mild — slightly short-tempered, recovered quickly')}
+    ${s('irritability',2,'Moderate — snapped at someone or had to manage it')}
+    ${s('irritability',3,'Severe — significant outbursts, hard to control')}
+    ${s('irritability',4,'Extreme — unable to function normally, felt out of character')}
   </div>
   <div class="cgl">Sadness / anhedonia</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('sadness',0,'None — engaged and interested')}
-    ${sel('sadness',1,'Mild — slightly flat, still functional')}
-    ${sel('sadness',2,'Moderate — noticeably sad, low interest')}
-    ${sel('sadness',3,'Severe — hopeless or empty')}
-    ${sel('sadness',4,'Extreme — could not get through the day')}
+    ${s('sadness',0,'None — felt engaged and interested in life')}
+    ${s('sadness',1,'Mild — slightly flat or low, still functional')}
+    ${s('sadness',2,'Moderate — noticeably sad, little interest in usual things')}
+    ${s('sadness',3,'Severe — couldn\'t motivate, felt hopeless or empty')}
+    ${s('sadness',4,'Extreme — could not get through normal tasks')}
   </div>
+  <div class="cgl">Anxiety / on edge</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('anxiety',0,'None')}
+    ${s('anxiety',1,'Mild — slightly keyed up')}
+    ${s('anxiety',2,'Moderate — noticeably anxious, hard to settle')}
+    ${s('anxiety',3,'Severe — racing thoughts, couldn\'t concentrate')}
+    ${s('anxiety',4,'Extreme — overwhelming, panic-adjacent')}
+  </div>
+  <div class="cgl">Mood swings</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('moodswings',0,'None — mood was stable all day')}
+    ${s('moodswings',1,'Mild — small shifts, nothing notable')}
+    ${s('moodswings',2,'Moderate — noticeable swings within the day')}
+    ${s('moodswings',3,'Severe — sharp emotional shifts, felt destabilized')}
+  </div>
+  <div class="cgl">Negative thinking</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('negativity',0,'None')}
+    ${s('negativity',1,'Mild — slightly pessimistic')}
+    ${s('negativity',2,'Moderate — catastrophizing about specific things')}
+    ${s('negativity',3,'Severe — globally negative about life, world, relationships')}
+    ${s('negativity',4,'Extreme — couldn\'t access any positive perspective')}
+  </div>
+
+  <!-- COGNITION -->
+  <div class="cgl">Brain fog / concentration</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('brainfog',0,'Clear — normal focus, no issues')}
+    ${s('brainfog',1,'Mildly foggy — small lapses, recovered quickly')}
+    ${s('brainfog',2,'Moderately foggy — lost train of thought, had to re-read')}
+    ${s('brainfog',3,'Severely foggy — couldn\'t complete tasks requiring focus')}
+  </div>
+
+  <!-- PHYSICAL -->
   <div class="cgl">Energy</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('energy',0,'Normal or good')}
-    ${sel('energy',1,'Slightly tired but functional')}
-    ${sel('energy',2,'Fatigued — effort needed for normal tasks')}
-    ${sel('energy',3,'Exhausted — wanted to cancel everything')}
+    ${s('energy',0,'Normal or good')}
+    ${s('energy',1,'Slightly tired but functional')}
+    ${s('energy',2,'Fatigued — needed effort to do normal tasks')}
+    ${s('energy',3,'Exhausted — wanted to cancel everything')}
   </div>
   <div class="cgl">Sleep that night</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('sleep',0,'Good — felt rested')}
-    ${sel('sleep',1,'Fair — some waking but okay')}
-    ${sel('sleep',2,'Poor — disrupted sleep')}
-    ${sel('sleep',3,'Very poor — barely slept')}
+    ${s('sleep',0,'Good — felt rested')}
+    ${s('sleep',1,'Fair — some waking but okay')}
+    ${s('sleep',2,'Poor — woke multiple times or took long to fall asleep')}
+    ${s('sleep',3,'Very poor — barely slept or unrested despite sleeping')}
   </div>
-  <div class="cgl">Work / functional impact</div>
+  <div class="cgl">Bloating</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('work',0,'Fully functional — no impact')}
-    ${sel('work',1,'Mildly affected')}
-    ${sel('work',2,'Moderately affected — cost me to get through')}
-    ${sel('work',3,'Significantly affected')}
-    ${sel('work',4,'Could not function')}
+    ${s('bloating',0,'None')}
+    ${s('bloating',1,'Mild — noticeable but not uncomfortable')}
+    ${s('bloating',2,'Moderate — uncomfortable, clothes felt tight')}
+    ${s('bloating',3,'Severe — painful or significantly distended')}
   </div>
-  <div class="cgl">Bleeding</div>
+  <div class="cgl">Headache</div>
   <div class="card" style="margin-bottom:10px;">
-    ${sel('bleeding','none','None')}
-    ${sel('bleeding','spotting','Spotting')}
-    ${sel('bleeding','light','Light')}
-    ${sel('bleeding','medium','Medium')}
-    ${sel('bleeding','heavy','Heavy')}
+    ${s('headache',0,'None')}
+    ${s('headache',1,'Mild — present but ignorable')}
+    ${s('headache',2,'Moderate — affecting concentration')}
+    ${s('headache',3,'Severe — had to take something for it')}
   </div>
-  <div class="cgl" style="margin-bottom:7px;">Notes (optional)</div>
-  <textarea class="text-input" id="retro-notes" rows="2" placeholder="Anything worth capturing from memory…">${e.notes||''}</textarea>
+  <div class="cgl">Pain / inflammation</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('pain',0,'None')}
+    ${s('pain',1,'Mild — noticeable but not interfering')}
+    ${s('pain',2,'Moderate — affecting comfort or movement')}
+    ${s('pain',3,'Severe — hard to ignore')}
+    <div style="margin-top:8px;"><input type="text" class="text-input-sm" id="r-pain-location" placeholder="Location if relevant" value="${e.painLocation||''}"></div>
+  </div>
+  <div class="cgl">Acne / skin</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('acne',0,'Clear — no active breakouts')}
+    ${s('acne',1,'Mild — 1–2 spots, not inflamed')}
+    ${s('acne',2,'Moderate — several spots, some inflamed')}
+    ${s('acne',3,'Severe — multiple inflamed lesions, cystic')}
+  </div>
+  <div class="cgl">Bowel regularity</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('bowel',0,'Normal for me')}
+    ${s('bowel',1,'Slower than usual')}
+    ${s('bowel',2,'Significantly sluggish / uncomfortable')}
+    ${s('bowel',3,'Diarrhea / loose')}
+  </div>
+  <div class="cgl">Libido</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('libido',0,'Absent — no interest at all')}
+    ${s('libido',1,'Low — below my personal baseline')}
+    ${s('libido',2,'Normal — typical for me')}
+    ${s('libido',3,'Elevated — noticeably higher than baseline')}
+    ${s('libido',4,'High — significantly heightened')}
+  </div>
+
+  <!-- FUNCTIONAL -->
+  <div class="cgl">Functional impact</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('work',0,'Fully functional — no impact')}
+    ${s('work',1,'Mildly affected — slightly less than usual')}
+    ${s('work',2,'Moderately affected — got through it but it cost me')}
+    ${s('work',3,'Significantly affected — had to push hard just to appear normal')}
+    ${s('work',4,'Could not function')}
+  </div>
+  <div class="cgl">Relationships / interactions</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${s('social',0,'Normal — engaged and present')}
+    ${s('social',1,'Withdrew slightly — less social than usual')}
+    ${s('social',2,'Actively avoided people')}
+    ${s('social',3,'Had a conflict I attribute to my emotional state')}
+  </div>
+
+  <!-- CONTEXT -->
+  <div class="cgl" style="margin-bottom:8px;">Day type</div>
+  <div class="toggle-row" style="flex-direction:column;gap:6px;margin-bottom:14px;">
+    ${chip('dayType','work','Work day')}
+    ${chip('dayType','wfh','Work from home')}
+    ${chip('dayType','weekend','Weekend')}
+    ${chip('dayType','holiday','Public holiday')}
+    ${chip('dayType','vacation','Vacation')}
+    ${chip('dayType','sick-day-off','Sick day off work')}
+  </div>
+  <div class="cgl" style="margin-bottom:8px;">Exercise</div>
+  <div class="toggle-row" style="margin-bottom:14px;">
+    ${chip('exercise','rest','Rest day')}
+    ${chip('exercise','light','Light')}
+    ${chip('exercise','moderate','Moderate')}
+    ${chip('exercise','heavy','Heavy')}
+  </div>
+  <div class="cgl" style="margin-bottom:8px;">Caffeine</div>
+  <div class="toggle-row" style="margin-bottom:14px;">
+    ${chip('caffeine','0','None')}
+    ${chip('caffeine','1','1 cup')}
+    ${chip('caffeine','2','2 cups')}
+    ${chip('caffeine','3+','3+')}
+  </div>
+  <div class="cgl" style="margin-bottom:8px;">Sodium</div>
+  <div class="toggle-row" style="margin-bottom:14px;">
+    ${chip('sodium','on-target','On target')}
+    ${chip('sodium','slightly-over','Slightly over')}
+    ${chip('sodium','over','Significantly over')}
+  </div>
+  <div class="cgl" style="margin-bottom:8px;">Mounjaro injection that day</div>
+  <div class="toggle-row" style="margin-bottom:14px;">
+    ${chip('mounjaro','yes','Yes')}
+    ${chip('mounjaro','no','No')}
+  </div>
+
+  <!-- NOTES -->
+  <div class="cgl" style="margin-bottom:7px;">Stress source</div>
+  <textarea class="text-input" id="r-stress" rows="2" placeholder="Work, commute, nothing notable…">${e.stressSource||''}</textarea>
+  <div class="cgl" style="margin-bottom:7px;margin-top:14px;">Notes / anything else</div>
+  <textarea class="text-input" id="r-notes" rows="3" placeholder="Anything worth capturing from memory…">${e.notes||''}</textarea>
   `;
 }
 
@@ -918,19 +1133,55 @@ function retroSel(el,field,val){
   retroFD[field]=val;
 }
 
+function retroMs(el,field,val){
+  if(!retroMS[field])retroMS[field]=[];
+  if(el.classList.contains('selected')){el.classList.remove('selected');retroMS[field]=retroMS[field].filter(v=>v!==val);}
+  else{el.classList.add('selected');retroMS[field].push(val);}
+}
+
+function retroChip(el,field,val){
+  el.closest('.toggle-row').querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  retroFD[field]=val;
+}
+
+function retroToggleFlag(type,val){
+  retroFS[type]=val;
+  const yid='r-'+type+'-yes';
+  const nid='r-'+type+'-no';
+  const did='r-'+type+'-detail';
+  const yBtn=document.getElementById(yid);
+  const nBtn=document.getElementById(nid);
+  const detail=document.getElementById(did);
+  if(yBtn)yBtn.className='flag-btn'+(val==='yes'?' flag-active-yes':'');
+  if(nBtn)nBtn.className='flag-btn'+(val==='no'?' flag-active-no':'');
+  if(detail)detail.className='collapsible'+(val==='yes'?' open':'');
+}
+
 function saveRetroLog(){
   if(!retroDate) return;
   const d=new Date(retroDate+'T00:00:00');
   const cd=getCycleDayForDate(d);
   const pi=phaseInfo(cd);
   const s=getSettings();
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const entry={
     date:retroDate, cycleDay:cd,
     phase:pi.phase, phaseLabel:pi.label, window:pi.win,
     cycleLength:parseInt(s.cycleLength),
     retro:true,
     ...retroFD,
-    notes:document.getElementById('retro-notes')?.value||'',
+    illSick:retroFS.illness||'no',
+    illSx:retroMS.illSx||[],
+    illMeds:retroMS.illMeds||[],
+    illRx:g('r-ill-rx'),
+    allergyPresent:retroFS.allergy||'no',
+    allergySx:retroMS.allergySx||[],
+    allergyMeds:retroMS.allergyMeds||[],
+    allergyTrigger:g('r-allergy-trigger'),
+    painLocation:g('r-pain-location'),
+    stressSource:g('r-stress'),
+    notes:g('r-notes'),
     savedAt:new Date().toISOString()
   };
   const logs=getLogs().filter(l=>l.date!==retroDate);
