@@ -158,7 +158,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
   <div class="section-title" style="margin-top:0;">Day type</div>
   <div class="card">
     <div class="cgl" style="margin-bottom:9px;">What kind of day was today?</div>
-    <div class="toggle-row" style="flex-direction:column;gap:8px;">
+    <div class="toggle-row" id="daytype-row" style="flex-direction:column;gap:8px;">
       <button type="button" class="toggle-chip" style="text-align:left;border-radius:var(--r);padding:10px 14px;" onclick="chip(this,'dayType','work')">
         <span style="font-weight:500;">Work day</span>
         <span style="font-size:12px;color:var(--text3);margin-left:8px;">Office, commute, full performance demand</span>
@@ -617,7 +617,12 @@ const BW=['Normal','Slower','Sluggish','Diarrhea'];
 const BLEED={none:'None',spotting:'Spotting',light:'Light',medium:'Medium',heavy:'Heavy'};
 const ILLSEV={mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
 const ALLSEV={controlled:'Fully controlled',mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
-function getLogs(){try{return JSON.parse(localStorage.getItem(STORE)||'[]');}catch{return[];}}
+function getLogs(){
+  try{
+    const logs=JSON.parse(localStorage.getItem(STORE)||'[]');
+    return logs.sort((a,b)=>b.date.localeCompare(a.date));
+  }catch{return[];}
+}
 function saveLogs(l){localStorage.setItem(STORE,JSON.stringify(l));}
 function getSettings(){const d={lastPeriod:'2026-04-06',cycleLength:29,name:'Shaili'};try{return Object.assign(d,JSON.parse(localStorage.getItem(SSTORE)||'{}'));}catch{return d;}}
 function saveSetting(k,v){const s=getSettings();s[k]=v;localStorage.setItem(SSTORE,JSON.stringify(s));updateHeader();showToast('Saved');}
@@ -645,8 +650,13 @@ function ms(el,field,val){
   else{el.classList.add('selected');MS[field].push(val);}
 }
 function chip(el,field,val){
-  el.closest('.toggle-row').querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');FD[field]=val;
+  // For dayType use the ID directly to guarantee correct sibling deselection
+  const row=field==='dayType'
+    ? document.getElementById('daytype-row')
+    : el.closest('.toggle-row');
+  if(row) row.querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  FD[field]=val;
   if(field==='dayType') updateWorkLabel(val);
 }
 
@@ -658,63 +668,68 @@ function updateWorkLabel(dayType){
   const o2=document.getElementById('work-opt-2');
   const o3=document.getElementById('work-opt-3');
   const o4=document.getElementById('work-opt-4');
-  if(!label) return;
+  // All elements must exist — if not, we're in retro modal context, safe to exit
+  if(!label||!hint||!o0||!o1||!o2||!o3||!o4) return;
+  const set=(l,h,a,b,c,d,e)=>{
+    label.textContent=l;hint.textContent=h;
+    o0.textContent=a;o1.textContent=b;o2.textContent=c;o3.textContent=d;o4.textContent=e;
+  };
   if(dayType==='work'){
-    label.textContent='Work impact today';
-    hint.textContent='How did your symptoms affect your ability to do your job?';
-    o0.textContent='Fully functional — no impact on work';
-    o1.textContent='Mildly affected — slightly less productive';
-    o2.textContent='Moderately affected — got through it but it cost me';
-    o3.textContent='Significantly affected — had to push hard just to appear normal';
-    o4.textContent='Could not function — called in or checked out entirely';
+    set('Work impact today',
+      'How did your symptoms affect your ability to do your job?',
+      'Fully functional — no impact on work',
+      'Mildly affected — slightly less productive',
+      'Moderately affected — got through it but it cost me',
+      'Significantly affected — had to push hard just to appear normal',
+      'Could not function — called in or checked out entirely');
   } else if(dayType==='wfh'){
-    label.textContent='Work impact today';
-    hint.textContent='Working from home — how did symptoms affect your output?';
-    o0.textContent='Fully functional — no impact on work';
-    o1.textContent='Mildly affected — slightly less productive than usual';
-    o2.textContent='Moderately affected — got through it but it cost me';
-    o3.textContent='Significantly affected — had to push hard to meet expectations';
-    o4.textContent='Could not function — gave up on the day';
+    set('Work impact today',
+      'Working from home — how did symptoms affect your output?',
+      'Fully functional — no impact on work',
+      'Mildly affected — slightly less productive than usual',
+      'Moderately affected — got through it but it cost me',
+      'Significantly affected — had to push hard to meet expectations',
+      'Could not function — gave up on the day');
   } else if(dayType==='weekend'){
-    label.textContent='Functional capacity today';
-    hint.textContent='How well were you able to engage with the day?';
-    o0.textContent='Fully present — engaged and capable';
-    o1.textContent='Slightly off — less engaged than usual';
-    o2.textContent='Moderately reduced — got through the day but it cost me';
-    o3.textContent='Significantly reduced — struggled to participate';
-    o4.textContent='Could not engage — stayed in bed or cancelled plans';
+    set('Functional capacity today',
+      'How well were you able to engage with the day?',
+      'Fully present — engaged and capable',
+      'Slightly off — less engaged than usual',
+      'Moderately reduced — got through the day but it cost me',
+      'Significantly reduced — struggled to participate',
+      'Could not engage — stayed in bed or cancelled plans');
   } else if(dayType==='holiday'){
-    label.textContent='Functional capacity today';
-    hint.textContent='Public holiday — how well were you able to enjoy or engage with the day?';
-    o0.textContent='Fully present — engaged and capable';
-    o1.textContent='Slightly off — less engaged than usual';
-    o2.textContent='Moderately reduced — managed but it cost me';
-    o3.textContent='Significantly reduced — struggled to participate';
-    o4.textContent='Could not engage — withdrew entirely';
+    set('Functional capacity today',
+      'Public holiday — how well were you able to enjoy or engage with the day?',
+      'Fully present — engaged and capable',
+      'Slightly off — less engaged than usual',
+      'Moderately reduced — managed but it cost me',
+      'Significantly reduced — struggled to participate',
+      'Could not engage — withdrew entirely');
   } else if(dayType==='vacation'){
-    label.textContent='Functional capacity today';
-    hint.textContent='Vacation — how present and capable did you feel?';
-    o0.textContent='Fully present — enjoyed the day without limitation';
-    o1.textContent='Slightly off — less present than I wanted to be';
-    o2.textContent='Moderately reduced — got through it but symptoms were noticeable';
-    o3.textContent='Significantly reduced — symptoms impacted the experience';
-    o4.textContent='Could not engage — symptoms dominated the day';
+    set('Functional capacity today',
+      'Vacation — how present and capable did you feel?',
+      'Fully present — enjoyed the day without limitation',
+      'Slightly off — less present than I wanted to be',
+      'Moderately reduced — got through it but symptoms were noticeable',
+      'Significantly reduced — symptoms impacted the experience',
+      'Could not engage — symptoms dominated the day');
   } else if(dayType==='sick-day-off'){
-    label.textContent='Functional capacity today';
-    hint.textContent='Sick day off — how much were you able to do despite being home?';
-    o0.textContent='Managed well — rested and recovered';
-    o1.textContent='Low capacity — mostly resting';
-    o2.textContent='Very limited — only essentials';
-    o3.textContent='Barely functional — significant effort for basic tasks';
-    o4.textContent='Could not function at all';
+    set('Functional capacity today',
+      'Sick day off — how much were you able to do despite being home?',
+      'Managed well — rested and recovered',
+      'Low capacity — mostly resting',
+      'Very limited — only essentials',
+      'Barely functional — significant effort for basic tasks',
+      'Could not function at all');
   } else {
-    label.textContent='Functional capacity today';
-    hint.textContent='Select a day type above to personalise this question';
-    o0.textContent='Fully functional — no impact';
-    o1.textContent='Mildly affected — slightly less than usual';
-    o2.textContent='Moderately affected — got through it but it cost me';
-    o3.textContent='Significantly affected — had to push hard just to appear normal';
-    o4.textContent='Could not function';
+    set('Functional capacity today',
+      'Select a day type above to personalise this question',
+      'Fully functional — no impact',
+      'Mildly affected — slightly less than usual',
+      'Moderately affected — got through it but it cost me',
+      'Significantly affected — had to push hard just to appear normal',
+      'Could not function');
   }
 }
 function toggleFlag(type,val){
@@ -753,7 +768,9 @@ function saveLog(e){
     savedAt:new Date().toISOString()
   };
   const logs=getLogs().filter(l=>l.date!==entry.date);
-  logs.unshift(entry);saveLogs(logs);resetForm();
+  logs.unshift(entry);
+  logs.sort((a,b)=>b.date.localeCompare(a.date));
+  saveLogs(logs);resetForm();
   showToast('Logged — great work');updateHeader();
   setTimeout(()=>showView('history'),700);
 }
@@ -874,8 +891,19 @@ function buildRetroForm(cd,pi,existing){
   const illOpen=e.illSick==='yes'?'open':'';
   const algOpen=e.allergyPresent==='yes'?'open':'';
   return`
+  <!-- DAY TYPE -->
+  <div class="cgl" style="margin-top:4px;margin-bottom:8px;">What kind of day was it?</div>
+  <div class="toggle-row" style="flex-direction:column;gap:6px;margin-bottom:16px;">
+    ${chip('dayType','work','Work day')}
+    ${chip('dayType','wfh','Work from home')}
+    ${chip('dayType','weekend','Weekend')}
+    ${chip('dayType','holiday','Public holiday')}
+    ${chip('dayType','vacation','Vacation')}
+    ${chip('dayType','sick-day-off','Sick day off work')}
+  </div>
+
   <!-- BLEEDING -->
-  <div class="cgl" style="margin-top:4px;">Bleeding</div>
+  <div class="cgl">Bleeding</div>
   <div class="card" style="margin-bottom:10px;">
     ${s('bleeding','none','None — no bleeding')}
     ${s('bleeding','spotting','Spotting<small>Light staining, no product needed</small>')}
@@ -1084,15 +1112,6 @@ function buildRetroForm(cd,pi,existing){
   </div>
 
   <!-- CONTEXT -->
-  <div class="cgl" style="margin-bottom:8px;">Day type</div>
-  <div class="toggle-row" style="flex-direction:column;gap:6px;margin-bottom:14px;">
-    ${chip('dayType','work','Work day')}
-    ${chip('dayType','wfh','Work from home')}
-    ${chip('dayType','weekend','Weekend')}
-    ${chip('dayType','holiday','Public holiday')}
-    ${chip('dayType','vacation','Vacation')}
-    ${chip('dayType','sick-day-off','Sick day off work')}
-  </div>
   <div class="cgl" style="margin-bottom:8px;">Exercise</div>
   <div class="toggle-row" style="margin-bottom:14px;">
     ${chip('exercise','rest','Rest day')}
@@ -1203,21 +1222,28 @@ function renderHistory(){
   renderWeekCalendar();
   const logs=getLogs();const el=document.getElementById('history-list');
   if(!logs.length){el.innerHTML='<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px;">○</div><div style="font-size:13.5px;line-height:1.7;color:var(--text3);">No entries yet.<br>Complete your first log tonight.</div></div>';return;}
-  el.innerHTML=logs.map((l,i)=>{
+  el.innerHTML=logs.map((l)=>{
     const pi=phaseInfo(l.cycleDay);
     const tags=[
       l.retro?'<span style="font-size:10px;background:rgba(106,142,174,.15);color:var(--info);padding:2px 7px;border-radius:4px;">Retro</span>':'',
       l.illSick==='yes'?'<span style="font-size:10px;background:rgba(212,117,107,.15);color:var(--danger);padding:2px 7px;border-radius:4px;">Sick</span>':'',
       l.allergyPresent==='yes'?'<span style="font-size:10px;background:rgba(196,147,90,.15);color:var(--warning);padding:2px 7px;border-radius:4px;">Allergy</span>':''
     ].filter(Boolean).join(' ');
-    return`<div class="history-entry" onclick="showDetail(${i})">
-      <div class="history-date">${l.date} &nbsp;·&nbsp; Day ${l.cycleDay} &nbsp;${tags}</div>
-      <div class="history-meta">
+    const dk=l.date;
+    return`<div class="history-entry" style="cursor:default;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div class="history-date" style="cursor:pointer;" onclick="showDetail('${dk}')">${l.date} &nbsp;·&nbsp; Day ${l.cycleDay} &nbsp;${tags}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="editEntry('${dk}')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--text2);cursor:pointer;">Edit</button>
+          <button onclick="deleteEntry('${dk}')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid rgba(212,117,107,.3);background:none;color:var(--danger);cursor:pointer;">Delete</button>
+        </div>
+      </div>
+      <div class="history-meta" onclick="showDetail('${dk}')" style="cursor:pointer;">
         <span class="phase-pill ${pi.cls}" style="font-size:11px;padding:2px 8px;">${l.phaseLabel}</span>
         ${l.window!=='none'?`<span class="window-badge window-${l.window}" style="font-size:10px;margin-left:0;">${l.window==='anger'?'Anger window':'PMDD window'}</span>`:''}
       </div>
       ${l.dayType?`<div style="font-size:11px;color:var(--text3);margin-bottom:5px;">${DAYTYPES[l.dayType]||l.dayType}</div>`:''}
-      <div class="h-scores">
+      <div class="h-scores" onclick="showDetail('${dk}')" style="cursor:pointer;">
         <span class="h-score">Irritability: <span>${sl(l.irritability,SW)}</span></span>
         <span class="h-score">Sadness: <span>${sl(l.sadness,SW)}</span></span>
         <span class="h-score">Energy: <span>${sl(l.energy,EW)}</span></span>
@@ -1226,8 +1252,8 @@ function renderHistory(){
   }).join('');
 }
 
-function showDetail(idx){
-  const l=getLogs()[idx];if(!l)return;
+function showDetail(dateKey){
+  const l=getLogs().find(x=>x.date===dateKey);if(!l)return;
   document.getElementById('modal-title').textContent=l.date+' — Day '+l.cycleDay;
   const row=(k,v)=>{if(v===undefined||v===null||v===''||v==='—')return'';return`<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${v}</span></div>`;};
   let html='';
@@ -1273,6 +1299,29 @@ function showDetail(idx){
 }
 
 function closeModal(e){if(e.target===document.getElementById('detail-modal'))document.getElementById('detail-modal').classList.remove('open');}
+
+function editEntry(dateKey){
+  const l=getLogs().find(x=>x.date===dateKey);
+  if(!l) return;
+  const today=new Date().toISOString().slice(0,10);
+  if(dateKey===today){
+    // Today's entry — reload log form pre-filled not supported yet, just open retro modal
+    document.getElementById('detail-modal').classList.remove('open');
+    openRetroLog(dateKey);
+    return;
+  }
+  document.getElementById('detail-modal').classList.remove('open');
+  openRetroLog(dateKey);
+}
+
+function deleteEntry(dateKey){
+  if(!confirm('Delete the entry for '+dateKey+'? This cannot be undone.')) return;
+  const logs=getLogs().filter(l=>l.date!==dateKey);
+  saveLogs(logs);
+  showToast('Entry deleted');
+  renderHistory();
+  updateHeader();
+}
 
 let charts={};
 function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
