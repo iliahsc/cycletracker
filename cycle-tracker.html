@@ -406,13 +406,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 
   <!-- FUNCTIONAL IMPACT -->
   <div class="section-title">Functional impact</div>
-  <div class="card">
-    <div class="cgl">Work today</div>
-    <label class="check-option" onclick="sel(this,'work',0)"><div class="check-box"></div><div class="check-text">Fully functional — no impact</div></label>
-    <label class="check-option" onclick="sel(this,'work',1)"><div class="check-box"></div><div class="check-text">Mildly affected — slightly less productive</div></label>
-    <label class="check-option" onclick="sel(this,'work',2)"><div class="check-box"></div><div class="check-text">Moderately affected — got through it but it cost me</div></label>
-    <label class="check-option" onclick="sel(this,'work',3)"><div class="check-box"></div><div class="check-text">Significantly affected — had to push hard just to appear normal</div></label>
-    <label class="check-option" onclick="sel(this,'work',4)"><div class="check-box"></div><div class="check-text">Could not function</div></label>
+  <div class="card" id="work-impact-card">
+    <div class="cgl" id="work-impact-label">Functional capacity today</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;" id="work-impact-hint">Select a day type above to personalise this question</div>
+    <label class="check-option" onclick="sel(this,'work',0)"><div class="check-box"></div><div class="check-text" id="work-opt-0">Fully functional — no impact</div></label>
+    <label class="check-option" onclick="sel(this,'work',1)"><div class="check-box"></div><div class="check-text" id="work-opt-1">Mildly affected — slightly less than usual</div></label>
+    <label class="check-option" onclick="sel(this,'work',2)"><div class="check-box"></div><div class="check-text" id="work-opt-2">Moderately affected — got through it but it cost me</div></label>
+    <label class="check-option" onclick="sel(this,'work',3)"><div class="check-box"></div><div class="check-text" id="work-opt-3">Significantly affected — had to push hard just to appear normal</div></label>
+    <label class="check-option" onclick="sel(this,'work',4)"><div class="check-box"></div><div class="check-text" id="work-opt-4">Could not function</div></label>
   </div>
   <div class="card">
     <div class="cgl">Relationships / interactions</div>
@@ -566,7 +567,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 <div class="toast" id="toast"></div>
 
 <script>
+const STORE='cycleLog_v3',SSTORE='cycleSet_v3';
 const DAYTYPES={work:'Work day',wfh:'Work from home',weekend:'Weekend',holiday:'Public holiday',vacation:'Vacation','sick-day-off':'Sick day off work'};
+const SW=['None','Mild','Moderate','Severe','Extreme'];
+const EW=['Normal','Slightly tired','Fatigued','Exhausted'];
+const SLW=['Good','Fair','Poor','Very poor'];
+const LW=['Absent','Low','Normal','Elevated','High'];
+const ACW=['Clear','Mild','Moderate','Severe'];
+const BW=['Normal','Slower','Sluggish','Diarrhea'];
+const BLEED={none:'None',spotting:'Spotting',light:'Light',medium:'Medium',heavy:'Heavy'};
+const ILLSEV={mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
+const ALLSEV={controlled:'Fully controlled',mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
 function getLogs(){try{return JSON.parse(localStorage.getItem(STORE)||'[]');}catch{return[];}}
 function saveLogs(l){localStorage.setItem(STORE,JSON.stringify(l));}
 function getSettings(){const d={lastPeriod:'2026-04-06',cycleLength:29,name:'Shaili'};try{return Object.assign(d,JSON.parse(localStorage.getItem(SSTORE)||'{}'));}catch{return d;}}
@@ -597,6 +608,75 @@ function ms(el,field,val){
 function chip(el,field,val){
   el.closest('.toggle-row').querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');FD[field]=val;
+  if(field==='dayType') updateWorkLabel(val);
+}
+
+function updateWorkLabel(dayType){
+  const label=document.getElementById('work-impact-label');
+  const hint=document.getElementById('work-impact-hint');
+  const o0=document.getElementById('work-opt-0');
+  const o1=document.getElementById('work-opt-1');
+  const o2=document.getElementById('work-opt-2');
+  const o3=document.getElementById('work-opt-3');
+  const o4=document.getElementById('work-opt-4');
+  if(!label) return;
+  if(dayType==='work'){
+    label.textContent='Work impact today';
+    hint.textContent='How did your symptoms affect your ability to do your job?';
+    o0.textContent='Fully functional — no impact on work';
+    o1.textContent='Mildly affected — slightly less productive';
+    o2.textContent='Moderately affected — got through it but it cost me';
+    o3.textContent='Significantly affected — had to push hard just to appear normal';
+    o4.textContent='Could not function — called in or checked out entirely';
+  } else if(dayType==='wfh'){
+    label.textContent='Work impact today';
+    hint.textContent='Working from home — how did symptoms affect your output?';
+    o0.textContent='Fully functional — no impact on work';
+    o1.textContent='Mildly affected — slightly less productive than usual';
+    o2.textContent='Moderately affected — got through it but it cost me';
+    o3.textContent='Significantly affected — had to push hard to meet expectations';
+    o4.textContent='Could not function — gave up on the day';
+  } else if(dayType==='weekend'){
+    label.textContent='Functional capacity today';
+    hint.textContent='How well were you able to engage with the day?';
+    o0.textContent='Fully present — engaged and capable';
+    o1.textContent='Slightly off — less engaged than usual';
+    o2.textContent='Moderately reduced — got through the day but it cost me';
+    o3.textContent='Significantly reduced — struggled to participate';
+    o4.textContent='Could not engage — stayed in bed or cancelled plans';
+  } else if(dayType==='holiday'){
+    label.textContent='Functional capacity today';
+    hint.textContent='Public holiday — how well were you able to enjoy or engage with the day?';
+    o0.textContent='Fully present — engaged and capable';
+    o1.textContent='Slightly off — less engaged than usual';
+    o2.textContent='Moderately reduced — managed but it cost me';
+    o3.textContent='Significantly reduced — struggled to participate';
+    o4.textContent='Could not engage — withdrew entirely';
+  } else if(dayType==='vacation'){
+    label.textContent='Functional capacity today';
+    hint.textContent='Vacation — how present and capable did you feel?';
+    o0.textContent='Fully present — enjoyed the day without limitation';
+    o1.textContent='Slightly off — less present than I wanted to be';
+    o2.textContent='Moderately reduced — got through it but symptoms were noticeable';
+    o3.textContent='Significantly reduced — symptoms impacted the experience';
+    o4.textContent='Could not engage — symptoms dominated the day';
+  } else if(dayType==='sick-day-off'){
+    label.textContent='Functional capacity today';
+    hint.textContent='Sick day off — how much were you able to do despite being home?';
+    o0.textContent='Managed well — rested and recovered';
+    o1.textContent='Low capacity — mostly resting';
+    o2.textContent='Very limited — only essentials';
+    o3.textContent='Barely functional — significant effort for basic tasks';
+    o4.textContent='Could not function at all';
+  } else {
+    label.textContent='Functional capacity today';
+    hint.textContent='Select a day type above to personalise this question';
+    o0.textContent='Fully functional — no impact';
+    o1.textContent='Mildly affected — slightly less than usual';
+    o2.textContent='Moderately affected — got through it but it cost me';
+    o3.textContent='Significantly affected — had to push hard just to appear normal';
+    o4.textContent='Could not function';
+  }
 }
 function toggleFlag(type,val){
   FS[type]=val;
@@ -615,6 +695,7 @@ function resetForm(){
   document.querySelectorAll('.collapsible').forEach(e=>e.classList.remove('open'));
   ['stress-source','notes-field','pain-location','ill-rx','allergy-trigger'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   FD={};MS={};FS={};
+  updateWorkLabel(null);
 }
 
 function saveLog(e){
@@ -657,16 +738,6 @@ function updateHeader(){
   if(g('s-cycle-len'))g('s-cycle-len').value=s.cycleLength;
   if(g('s-name'))g('s-name').value=s.name||'Shaili';
 }
-
-const SW=['None','Mild','Moderate','Severe','Extreme'];
-const EW=['Normal','Slightly tired','Fatigued','Exhausted'];
-const SLW=['Good','Fair','Poor','Very poor'];
-const LW=['Absent','Low','Normal','Elevated','High'];
-const ACW=['Clear','Mild','Moderate','Severe'];
-const BW=['Normal','Slower','Sluggish','Diarrhea'];
-const BLEED={none:'None',spotting:'Spotting',light:'Light',medium:'Medium',heavy:'Heavy'};
-const ILLSEV={mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
-const ALLSEV={controlled:'Fully controlled',mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
 
 function sl(v,arr){if(v===undefined||v===null)return'—';return arr[v]||String(v);}
 
