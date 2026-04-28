@@ -102,6 +102,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 .toast{position:fixed;bottom:calc(var(--safe-bot) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg4);border:1px solid var(--border2);border-radius:20px;padding:9px 18px;font-size:13px;color:var(--text);opacity:0;transition:all .3s;z-index:200;white-space:nowrap;pointer-events:none;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .empty{text-align:center;padding:60px 20px;color:var(--text3);}
+.cal-day{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:var(--r);cursor:pointer;transition:background .15s;user-select:none;}
+.cal-day:active{background:var(--bg4);}
+.cal-day-num{font-size:14px;font-weight:500;color:var(--text);}
+.cal-day-name{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
+.cal-dot{width:8px;height:8px;border-radius:50%;margin-top:1px;}
+.cal-today{background:rgba(200,169,126,.1);border:1px solid rgba(200,169,126,.25);border-radius:var(--r);}
+.cal-missed .cal-day-num{color:var(--text3);}
+
 .logged-banner{background:rgba(200,169,126,.08);border:1px solid rgba(200,169,126,.2);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;}
 .divider{height:1px;background:var(--border);margin:14px 0;}
 .flag-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -501,6 +509,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
     <div class="section-title" style="margin:0;">Log history</div>
     <button class="btn btn-secondary btn-sm" onclick="exportPDF()">Export PDF</button>
   </div>
+
+  <!-- 7-DAY CALENDAR -->
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;">Last 7 days — tap a missed day to log it</div>
+    <div id="week-calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+    <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;">
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;"></span>Logged</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);"><span style="width:10px;height:10px;border-radius:50%;background:var(--bg4);border:1.5px solid var(--border2);display:inline-block;"></span>Missed</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);"><span style="width:10px;height:10px;border-radius:3px;background:rgba(200,169,126,.25);border:1.5px solid var(--accent);display:inline-block;"></span>Today</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);"><span style="width:10px;height:10px;border-radius:50%;background:var(--info);opacity:.7;display:inline-block;"></span>Retro</span>
+    </div>
+  </div>
+
   <div id="history-list"></div>
 </div>
 
@@ -552,6 +573,24 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 
 </div><!-- /views -->
 </div><!-- /app -->
+
+<!-- RETRO LOG MODAL -->
+<div class="modal-overlay" id="retro-modal" onclick="closeRetroModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div class="modal-title" id="retro-title">Log a past day</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:-8px;margin-bottom:14px;" id="retro-subtitle"></div>
+      </div>
+      <span class="modal-close" onclick="document.getElementById('retro-modal').classList.remove('open')">Close</span>
+    </div>
+    <div style="background:rgba(106,142,174,.1);border:1px solid rgba(106,142,174,.2);border-radius:var(--r);padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--info);line-height:1.6;">Retrospective entry — logged from memory. Flagged in history and PDF export.</div>
+    <div id="retro-form-content"></div>
+    <button class="btn btn-primary" onclick="saveRetroLog()" style="margin-top:8px;">Save past entry</button>
+    <div style="height:8px;"></div>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="detail-modal" onclick="closeModal(event)">
@@ -741,12 +780,182 @@ function updateHeader(){
 
 function sl(v,arr){if(v===undefined||v===null)return'—';return arr[v]||String(v);}
 
+// ── RETRO LOG STATE ──────────────────────────────────────────────
+let retroDate=null;
+let retroFD={},retroMS={},retroFS={};
+
+function renderWeekCalendar(){
+  const cal=document.getElementById('week-calendar');
+  if(!cal) return;
+  const logs=getLogs();
+  const logDates=new Set(logs.map(l=>l.date));
+  const retroDates=new Set(logs.filter(l=>l.retro).map(l=>l.date));
+  const today=new Date();today.setHours(0,0,0,0);
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  cal.innerHTML=days.map(d=>{
+    const key=d.toISOString().slice(0,10);
+    const isToday=d.getTime()===today.getTime();
+    const logged=logDates.has(key);
+    const isRetro=retroDates.has(key);
+    const cd=getCycleDayForDate(d);
+    const pi=phaseInfo(cd);
+    const phaseColor=getPhaseColor(pi.phase);
+    const dotColor=logged?(isRetro?'var(--info)':phaseColor):'transparent';
+    const dotBorder=logged?'none':`1.5px solid var(--border2)`;
+    const todayCls=isToday?'cal-today':'';
+    const missedCls=!logged&&!isToday?'cal-missed':'';
+    const dayNum=d.getDate();
+    const dayName=dayNames[d.getDay()];
+    const canLog=!logged||isToday;
+    return`<div class="cal-day ${todayCls} ${missedCls}" onclick="${canLog?`openRetroLog('${key}')`:`showToast('Already logged — tap entry in history to review')`}" style="position:relative;">
+      <div class="cal-day-name">${dayName}</div>
+      <div class="cal-day-num">${dayNum}</div>
+      <div class="cal-dot" style="background:${dotColor};border:${dotBorder};"></div>
+    </div>`;
+  }).join('');
+}
+
+function getPhaseColor(phase){
+  const map={'menstrual':'#8b4a4a','early-follicular':'#b8833a','late-follicular':'#7a9040','ovulation':'#4a8a78','early-luteal':'#4a6a9e','late-luteal':'#7a5a9e'};
+  return map[phase]||'var(--accent)';
+}
+
+function getCycleDayForDate(date){
+  const s=getSettings();
+  const last=new Date(s.lastPeriod+'T00:00:00');
+  const d=new Date(date);d.setHours(0,0,0,0);
+  return Math.max(1,Math.floor((d-last)/86400000)+1);
+}
+
+function openRetroLog(dateKey){
+  const logs=getLogs();
+  const existing=logs.find(l=>l.date===dateKey);
+  const today=new Date().toISOString().slice(0,10);
+  if(dateKey===today){
+    // today — just scroll to log form
+    showView('log');
+    return;
+  }
+  retroDate=dateKey;
+  retroFD={};retroMS={};retroFS={};
+  const d=new Date(dateKey+'T00:00:00');
+  const cd=getCycleDayForDate(d);
+  const pi=phaseInfo(cd);
+  const formatted=d.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('retro-title').textContent=formatted;
+  document.getElementById('retro-subtitle').textContent=`Cycle day ${cd} · ${pi.label}${pi.win!=='none'?' · '+(pi.win==='anger'?'Anger window':'PMDD window'):''}`;
+  // Build a minimal quick-select retro form
+  document.getElementById('retro-form-content').innerHTML=buildRetroForm(cd,pi,existing);
+  document.getElementById('retro-modal').classList.add('open');
+}
+
+function buildRetroForm(cd,pi,existing){
+  const e=existing||{};
+  const sel=(field,val,label,group)=>{
+    const checked=e[field]===val?'selected':'';
+    return`<label class="check-option ${checked}" onclick="retroSel(this,'${field}',${typeof val==='string'?`'${val}'`:val})"><div class="check-box"></div><div class="check-text">${label}</div></label>`;
+  };
+  return`
+  <div class="cgl" style="margin-top:4px;">Irritability / anger</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('irritability',0,'None — calm and even-tempered')}
+    ${sel('irritability',1,'Mild — slightly short-tempered')}
+    ${sel('irritability',2,'Moderate — snapped at someone or had to manage it')}
+    ${sel('irritability',3,'Severe — significant outbursts')}
+    ${sel('irritability',4,'Extreme — out of character, unable to function')}
+  </div>
+  <div class="cgl">Sadness / anhedonia</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('sadness',0,'None — engaged and interested')}
+    ${sel('sadness',1,'Mild — slightly flat, still functional')}
+    ${sel('sadness',2,'Moderate — noticeably sad, low interest')}
+    ${sel('sadness',3,'Severe — hopeless or empty')}
+    ${sel('sadness',4,'Extreme — could not get through the day')}
+  </div>
+  <div class="cgl">Energy</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('energy',0,'Normal or good')}
+    ${sel('energy',1,'Slightly tired but functional')}
+    ${sel('energy',2,'Fatigued — effort needed for normal tasks')}
+    ${sel('energy',3,'Exhausted — wanted to cancel everything')}
+  </div>
+  <div class="cgl">Sleep that night</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('sleep',0,'Good — felt rested')}
+    ${sel('sleep',1,'Fair — some waking but okay')}
+    ${sel('sleep',2,'Poor — disrupted sleep')}
+    ${sel('sleep',3,'Very poor — barely slept')}
+  </div>
+  <div class="cgl">Work / functional impact</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('work',0,'Fully functional — no impact')}
+    ${sel('work',1,'Mildly affected')}
+    ${sel('work',2,'Moderately affected — cost me to get through')}
+    ${sel('work',3,'Significantly affected')}
+    ${sel('work',4,'Could not function')}
+  </div>
+  <div class="cgl">Bleeding</div>
+  <div class="card" style="margin-bottom:10px;">
+    ${sel('bleeding','none','None')}
+    ${sel('bleeding','spotting','Spotting')}
+    ${sel('bleeding','light','Light')}
+    ${sel('bleeding','medium','Medium')}
+    ${sel('bleeding','heavy','Heavy')}
+  </div>
+  <div class="cgl" style="margin-bottom:7px;">Notes (optional)</div>
+  <textarea class="text-input" id="retro-notes" rows="2" placeholder="Anything worth capturing from memory…">${e.notes||''}</textarea>
+  `;
+}
+
+function retroSel(el,field,val){
+  el.parentElement.querySelectorAll('.check-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  retroFD[field]=val;
+}
+
+function saveRetroLog(){
+  if(!retroDate) return;
+  const d=new Date(retroDate+'T00:00:00');
+  const cd=getCycleDayForDate(d);
+  const pi=phaseInfo(cd);
+  const s=getSettings();
+  const entry={
+    date:retroDate, cycleDay:cd,
+    phase:pi.phase, phaseLabel:pi.label, window:pi.win,
+    cycleLength:parseInt(s.cycleLength),
+    retro:true,
+    ...retroFD,
+    notes:document.getElementById('retro-notes')?.value||'',
+    savedAt:new Date().toISOString()
+  };
+  const logs=getLogs().filter(l=>l.date!==retroDate);
+  logs.unshift(entry);
+  logs.sort((a,b)=>b.date.localeCompare(a.date));
+  saveLogs(logs);
+  document.getElementById('retro-modal').classList.remove('open');
+  showToast('Past entry saved');
+  renderHistory();
+  retroDate=null;retroFD={};retroMS={};retroFS={};
+}
+
+function closeRetroModal(e){
+  if(e.target===document.getElementById('retro-modal'))
+    document.getElementById('retro-modal').classList.remove('open');
+}
+
 function renderHistory(){
+  renderWeekCalendar();
   const logs=getLogs();const el=document.getElementById('history-list');
   if(!logs.length){el.innerHTML='<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px;">○</div><div style="font-size:13.5px;line-height:1.7;color:var(--text3);">No entries yet.<br>Complete your first log tonight.</div></div>';return;}
   el.innerHTML=logs.map((l,i)=>{
     const pi=phaseInfo(l.cycleDay);
     const tags=[
+      l.retro?'<span style="font-size:10px;background:rgba(106,142,174,.15);color:var(--info);padding:2px 7px;border-radius:4px;">Retro</span>':'',
       l.illSick==='yes'?'<span style="font-size:10px;background:rgba(212,117,107,.15);color:var(--danger);padding:2px 7px;border-radius:4px;">Sick</span>':'',
       l.allergyPresent==='yes'?'<span style="font-size:10px;background:rgba(196,147,90,.15);color:var(--warning);padding:2px 7px;border-radius:4px;">Allergy</span>':''
     ].filter(Boolean).join(' ');
@@ -771,6 +980,7 @@ function showDetail(idx){
   document.getElementById('modal-title').textContent=l.date+' — Day '+l.cycleDay;
   const row=(k,v)=>{if(v===undefined||v===null||v===''||v==='—')return'';return`<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${v}</span></div>`;};
   let html='';
+  if(l.retro)html+=`<div style="background:rgba(106,142,174,.1);border:1px solid rgba(106,142,174,.2);border-radius:var(--r);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--info);">Retrospective entry — logged from memory</div>`;
   html+=row('Day type',DAYTYPES[l.dayType]||l.dayType);
   html+=row('Bleeding',BLEED[l.bleeding]||l.bleeding);
   if(l.illSick==='yes'){
@@ -930,8 +1140,9 @@ function exportPDF(){
     const winTag=l.window!=='none'?' ['+( l.window==='anger'?'Anger window':'PMDD window')+']':'';
     const sickTag=l.illSick==='yes'?' [SICK]':'';
     const algTag=l.allergyPresent==='yes'?' [ALLERGY]':'';
+    const retroTag=l.retro?' [RETROSPECTIVE]':'';
     doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-    doc.text(l.date+'  ·  Day '+l.cycleDay+'  ·  '+l.phaseLabel+winTag+sickTag+algTag,20,y);nl();
+    doc.text(l.date+'  ·  Day '+l.cycleDay+'  ·  '+l.phaseLabel+winTag+sickTag+algTag+retroTag,20,y);nl();
     if(l.dayType){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(130,130,130);doc.text(DAYTYPES[l.dayType]||l.dayType,22,y);nl();}
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);
     const f=[];
