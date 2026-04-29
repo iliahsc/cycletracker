@@ -401,10 +401,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
   </div>
   <div class="card">
     <div class="cgl">Bowel regularity</div>
-    <label class="check-option" onclick="sel(this,'bowel',0)"><div class="check-box"></div><div class="check-text">Normal for me</div></label>
-    <label class="check-option" onclick="sel(this,'bowel',1)"><div class="check-box"></div><div class="check-text">Slower than usual</div></label>
-    <label class="check-option" onclick="sel(this,'bowel',2)"><div class="check-box"></div><div class="check-text">Significantly sluggish / uncomfortable</div></label>
-    <label class="check-option" onclick="sel(this,'bowel',3)"><div class="check-box"></div><div class="check-text">Diarrhea / loose</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',0)"><div class="check-box"></div><div class="check-text">Normal for me — usual frequency and ease</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',1)"><div class="check-box"></div><div class="check-text">Went but slower / harder than usual</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',2)"><div class="check-box"></div><div class="check-text">No movement today — no urgency either</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',3)"><div class="check-box"></div><div class="check-text">No movement — uncomfortable, feel backed up</div></label>
+    <label class="check-option" onclick="sel(this,'bowel',4)"><div class="check-box"></div><div class="check-text">Diarrhea / loose</div></label>
   </div>
 
   <!-- SEXUAL HEALTH -->
@@ -671,7 +672,7 @@ const EW=['Normal','Slightly tired','Fatigued','Exhausted'];
 const SLW=['Good','Fair','Poor','Very poor'];
 const LW=['Absent','Low','Normal','Elevated','High'];
 const ACW=['Clear','Mild','Moderate','Severe'];
-const BW=['Normal','Slower','Sluggish','Diarrhea'];
+const BW=['Normal','Went but slower','No movement — no urgency','No movement — uncomfortable','Diarrhea'];
 const BLEED={none:'None',spotting:'Spotting',light:'Light',medium:'Medium',heavy:'Heavy'};
 const ILLSEV={mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
 const ALLSEV={controlled:'Fully controlled',mild:'Mild',moderate:'Moderate',significant:'Significant',severe:'Severe'};
@@ -1220,10 +1221,11 @@ function buildRetroForm(cd,pi,existing){
   </div>
   <div class="cgl">Bowel regularity</div>
   <div class="card" style="margin-bottom:10px;">
-    ${s('bowel',0,'Normal for me')}
-    ${s('bowel',1,'Slower than usual')}
-    ${s('bowel',2,'Significantly sluggish / uncomfortable')}
-    ${s('bowel',3,'Diarrhea / loose')}
+    ${s('bowel',0,'Normal for me — usual frequency and ease')}
+    ${s('bowel',1,'Went but slower / harder than usual')}
+    ${s('bowel',2,'No movement today — no urgency either')}
+    ${s('bowel',3,'No movement — uncomfortable, feel backed up')}
+    ${s('bowel',4,'Diarrhea / loose')}
   </div>
   <div class="cgl">Libido</div>
   <div class="card" style="margin-bottom:10px;">
