@@ -694,8 +694,15 @@ function phaseInfo(d){
   if(d<=20)return{phase:'early-luteal',label:'Early luteal',cls:'phase-el',win:'none',winLabel:'Stable'};
   return{phase:'late-luteal',label:'Late luteal',cls:'phase-ll',win:'pmdd',winLabel:'PMDD window'};
 }
+function localDateKey(d){
+  const dt=d||new Date();
+  const y=dt.getFullYear();
+  const m=String(dt.getMonth()+1).padStart(2,'0');
+  const day=String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function getCycleDay(){const s=getSettings();const last=new Date(s.lastPeriod+'T00:00:00');const today=new Date();today.setHours(0,0,0,0);return Math.max(1,Math.floor((today-last)/86400000)+1);}
-function todayKey(){return new Date().toISOString().slice(0,10);}
+function todayKey(){return localDateKey();}
 
 let FD={},MS={},FS={};
 
@@ -718,7 +725,7 @@ function checkPeriodStart(bleedVal){
   // Check yesterday wasn't also a flow day (avoid re-triggering on day 2/3)
   const logs=getLogs();
   const yesterday=new Date(todayDate);yesterday.setDate(yesterday.getDate()-1);
-  const yKey=yesterday.toISOString().slice(0,10);
+  const yKey=localDateKey(yesterday);
   const yLog=logs.find(l=>l.date===yKey);
   if(yLog&&['light','medium','heavy'].includes(yLog.bleeding)) return;
   // This looks like day 1 — update period start and learn cycle length
@@ -759,7 +766,7 @@ function checkPeriodEnd(bleedVal){
   let flowDays=0;
   for(let i=1;i<=4;i++){
     const d=new Date(today);d.setDate(d.getDate()-i);
-    const key=d.toISOString().slice(0,10);
+    const key=localDateKey(d);
     const log=logs.find(l=>l.date===key);
     if(log&&['light','medium','heavy'].includes(log.bleeding)) flowDays++;
     else break;
@@ -956,7 +963,7 @@ function renderWeekCalendar(){
   }
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   cal.innerHTML=days.map(d=>{
-    const key=d.toISOString().slice(0,10);
+    const key=localDateKey(d);
     const isToday=d.getTime()===today.getTime();
     const logged=logDates.has(key);
     const isRetro=retroDates.has(key);
@@ -993,7 +1000,7 @@ function getCycleDayForDate(date){
 function openRetroLog(dateKey){
   const logs=getLogs();
   const existing=logs.find(l=>l.date===dateKey);
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateKey();
   if(dateKey===today){
     // today — just scroll to log form
     showView('log');
@@ -1466,10 +1473,10 @@ function closePeriodEndModal(e){
 
 function openExportModal(){
   const logs=getLogs();
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateKey();
   // Default: last 35 days (covers one full cycle)
   const from=new Date();from.setDate(from.getDate()-35);
-  const fromKey=from.toISOString().slice(0,10);
+  const fromKey=localDateKey(from);
   const ef=document.getElementById('export-from');
   const et=document.getElementById('export-to');
   if(ef) ef.value=fromKey;
@@ -1499,7 +1506,7 @@ function checkStreakBanner(){
   let streak=0;let symptom='';
   for(let i=0;i<7;i++){
     const d=new Date(today);d.setDate(d.getDate()-i);
-    const key=d.toISOString().slice(0,10);
+    const key=localDateKey(d);
     const log=logs.find(l=>l.date===key);
     if(!log) break;
     const irr=log.irritability!==undefined?log.irritability:-1;
@@ -1523,7 +1530,7 @@ function checkStreakBanner(){
 function editEntry(dateKey){
   const l=getLogs().find(x=>x.date===dateKey);
   if(!l) return;
-  const today=new Date().toISOString().slice(0,10);
+  const today=localDateKey();
   if(dateKey===today){
     // Today's entry — reload log form pre-filled not supported yet, just open retro modal
     document.getElementById('detail-modal').classList.remove('open');
@@ -1550,7 +1557,7 @@ function renderDashboard(){
   const logs=getLogs();
   document.getElementById('m-entries').textContent=logs.length;
   let streak=0;const today=new Date();today.setHours(0,0,0,0);
-  for(let i=0;i<90;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(logs.some(l=>l.date===d.toISOString().slice(0,10)))streak++;else break;}
+  for(let i=0;i<90;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(logs.some(l=>l.date===localDateKey(d)))streak++;else break;}
   document.getElementById('m-streak').textContent=streak;
   const wAvg=(win,f)=>{const v=logs.filter(l=>l.window===win&&l[f]!==undefined&&l[f]!==null&&l[f]>=0).map(l=>l[f]);return v.length?(v.reduce((a,b)=>a+b,0)/v.length):null;};
   const ai=wAvg('anger','irritability');const ps=wAvg('pmdd','sadness');
