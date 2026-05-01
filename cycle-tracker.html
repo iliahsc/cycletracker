@@ -1403,46 +1403,101 @@ function renderHistory(){
 
 function showDetail(dateKey){
   const l=getLogs().find(x=>x.date===dateKey);if(!l)return;
+  const pi=phaseInfo(l.cycleDay);
   document.getElementById('modal-title').textContent=l.date+' — Day '+l.cycleDay;
-  const row=(k,v)=>{if(v===undefined||v===null||v===''||v==='—')return'';return`<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${v}</span></div>`;};
+
+  const sec=(title)=>`<div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${title}</div>`;
+  const row=(k,v,unanswered)=>{
+    if(v===undefined||v===null||v==='') return unanswered?`<div class="modal-row"><span class="modal-key">${k}</span><span style="color:var(--text3);font-size:12px;font-style:italic;">Not answered</span></div>`:'';
+    return`<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${v}</span></div>`;
+  };
+  const rowAlways=(k,v)=>row(k,v,true);
+
   let html='';
-  if(l.retro)html+=`<div style="background:rgba(106,142,174,.1);border:1px solid rgba(106,142,174,.2);border-radius:var(--r);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--info);">Retrospective entry — logged from memory</div>`;
-  html+=row('Day type',DAYTYPES[l.dayType]||l.dayType);
-  html+=row('Bleeding',BLEED[l.bleeding]||l.bleeding);
+
+  // Meta
+  if(l.retro) html+=`<div style="background:rgba(106,142,174,.1);border:1px solid rgba(106,142,174,.2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--info);">Retrospective entry — logged from memory</div>`;
+  html+=`<div class="modal-row"><span class="modal-key">Phase</span><span class="phase-pill ${pi.cls}" style="font-size:11px;padding:2px 8px;">${l.phaseLabel}</span></div>`;
+  if(l.window!=='none') html+=`<div class="modal-row"><span class="modal-key">Window</span><span class="window-badge window-${l.window}" style="font-size:11px;margin-left:0;">${l.window==='anger'?'Anger / stress window':'PMDD window'}</span></div>`;
+
+  // Day type
+  html+=sec('Day type');
+  html+=rowAlways('What kind of day',DAYTYPES[l.dayType]||l.dayType);
+
+  // Bleeding
+  html+=sec('Bleeding');
+  html+=rowAlways('Flow today',BLEED[l.bleeding]||l.bleeding);
+
+  // Illness
+  html+=sec('Illness');
+  html+=rowAlways('Sick today',l.illSick==='yes'?'Yes':'No');
   if(l.illSick==='yes'){
-    html+=row('Illness',ILLSEV[l.illSeverity]||l.illSeverity);
-    if(l.illSx&&l.illSx.length)html+=row('Ill symptoms',l.illSx.join(', '));
-    if(l.illMeds&&l.illMeds.length)html+=row('Ill meds',l.illMeds.join(', '));
-    if(l.illRx)html+=row('Rx',l.illRx);
+    html+=rowAlways('Severity',ILLSEV[l.illSeverity]||l.illSeverity);
+    html+=row('Symptoms',l.illSx&&l.illSx.length?l.illSx.join(', '):'');
+    html+=row('Medication taken',l.illMeds&&l.illMeds.length?l.illMeds.join(', '):'');
+    html+=row('Prescription',l.illRx);
   }
+
+  // Allergies
+  html+=sec('Allergies');
+  html+=rowAlways('Allergy symptoms today',l.allergyPresent==='yes'?'Yes':'No');
   if(l.allergyPresent==='yes'){
-    html+=row('Allergy severity',ALLSEV[l.allergySev]||l.allergySev);
-    if(l.allergySx&&l.allergySx.length)html+=row('Allergy symptoms',l.allergySx.join(', '));
-    if(l.allergyTrigger)html+=row('Trigger',l.allergyTrigger);
-    if(l.allergyMeds&&l.allergyMeds.length)html+=row('Allergy meds',l.allergyMeds.join(', '));
+    html+=rowAlways('Breakthrough severity',ALLSEV[l.allergySev]||l.allergySev);
+    html+=row('Symptoms',l.allergySx&&l.allergySx.length?l.allergySx.join(', '):'');
+    html+=row('Trigger',l.allergyTrigger);
+    html+=row('Additional medication',l.allergyMeds&&l.allergyMeds.length?l.allergyMeds.join(', '):'');
   }
-  html+=row('Irritability',sl(l.irritability,SW));
-  html+=row('Sadness',sl(l.sadness,SW));
-  html+=row('Anxiety',sl(l.anxiety,SW));
-  html+=row('Mood swings',sl(l.moodswings,SW));
-  html+=row('Negativity',sl(l.negativity,SW));
-  html+=row('Brain fog',sl(l.brainfog,SW));
-  html+=row('Energy',sl(l.energy,EW));
-  html+=row('Sleep',sl(l.sleep,SLW));
-  html+=row('Bloating',sl(l.bloating,SW));
-  html+=row('Appetite',l.appetite===-1?'Suppressed':sl(l.appetite,SW));
-  html+=row('Headache',sl(l.headache,SW));
-  html+=row('Pain',sl(l.pain,SW));
-  if(l.painLocation)html+=row('Pain location',l.painLocation);
-  html+=row('Acne',sl(l.acne,ACW));
-  html+=row('Bowel',sl(l.bowel,BW));
-  html+=row('Libido',sl(l.libido,LW));
-  html+=row('Work impact',sl(l.work,SW));
-  html+=row('Social',sl(l.social,SW));
-  html+=row('Exercise',l.exercise);html+=row('Caffeine',l.caffeine);html+=row('Sodium',l.sodium);html+=row('Mounjaro',l.mounjaro);
-  if(l.medNotes&&l.medNotes.length)html+=row('Med notes',l.medNotes.join(', '));
-  if(l.stressSource)html+=row('Stress',l.stressSource);
-  if(l.notes)html+=row('Notes',l.notes);
+
+  // Mood
+  html+=sec('Mood');
+  html+=rowAlways('Irritability / anger',sl(l.irritability,SW));
+  html+=rowAlways('Sadness / anhedonia',sl(l.sadness,SW));
+  html+=rowAlways('Anxiety / on edge',sl(l.anxiety,SW));
+  html+=rowAlways('Mood swings',sl(l.moodswings,SW));
+  html+=rowAlways('Negative thinking',sl(l.negativity,SW));
+
+  // Cognition
+  html+=sec('Cognition');
+  html+=rowAlways('Concentration / brain fog',sl(l.brainfog,SW));
+
+  // Physical
+  html+=sec('Physical');
+  html+=rowAlways('Energy',sl(l.energy,EW));
+  html+=rowAlways('Sleep last night',sl(l.sleep,SLW));
+  html+=rowAlways('Bloating',sl(l.bloating,SW));
+  html+=rowAlways('Appetite / cravings',l.appetite===-1?'Suppressed — had to force myself to eat':sl(l.appetite,['Normal','Mildly increased','Strong cravings']));
+  html+=rowAlways('Headache',sl(l.headache,SW));
+  html+=rowAlways('Pain / inflammation',sl(l.pain,SW));
+  if(l.painLocation) html+=row('Pain location',l.painLocation);
+  html+=rowAlways('Acne / skin',sl(l.acne,ACW));
+  html+=rowAlways('Bowel regularity',sl(l.bowel,BW));
+
+  // Sexual health
+  html+=sec('Sexual health');
+  html+=rowAlways('Libido',sl(l.libido,LW));
+
+  // Functional impact
+  html+=sec('Functional impact');
+  const workLabel=l.dayType==='work'||l.dayType==='wfh'?'Work impact today':'Functional capacity today';
+  html+=rowAlways(workLabel,sl(l.work,SW));
+  html+=rowAlways('Relationships / interactions',sl(l.social,['Normal — engaged and present','Withdrew slightly','Actively avoided people','Had a conflict']));
+
+  // Context
+  html+=sec('Context');
+  html+=rowAlways('Exercise',l.exercise?({rest:'Rest day',light:'Light',moderate:'Moderate',heavy:'Heavy'}[l.exercise]||l.exercise):'Not answered');
+  html+=rowAlways('Caffeine',l.caffeine?({0:'None','0':'None','1':'1 cup','2':'2 cups','3+':'3+'}[l.caffeine]||l.caffeine):'Not answered');
+  html+=rowAlways('Sodium',l.sodium?({'on-target':'On target','slightly-over':'Slightly over','over':'Significantly over'}[l.sodium]||l.sodium):'Not answered');
+  html+=rowAlways('Mounjaro injection',l.mounjaro?({yes:`Yes${l.mounjaroDose?' — '+l.mounjaroDose+'mg':''}`,no:'No'}[l.mounjaro]||l.mounjaro):'Not answered');
+  if(l.medNotes&&l.medNotes.length){
+    html+=row('Medication notes',l.medNotes.join(', '));
+    if(l.medNotes.includes('missed-supp')&&l.missedSuppNote) html+=row('Missed supplement',l.missedSuppNote);
+  }
+
+  // Notes
+  if(l.stressSource||l.notes) html+=sec('Notes');
+  if(l.stressSource) html+=row('Stress source',l.stressSource);
+  if(l.notes) html+=row('Additional notes',l.notes);
+
   document.getElementById('modal-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('open');
 }
@@ -1672,31 +1727,103 @@ function exportPDF(fromDate,toDate){
     const sickTag=l.illSick==='yes'?' [SICK]':'';
     const algTag=l.allergyPresent==='yes'?' [ALLERGY]':'';
     const retroTag=l.retro?' [RETROSPECTIVE]':'';
+
+    // Entry header
     doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
     doc.text(l.date+'  ·  Day '+l.cycleDay+'  ·  '+l.phaseLabel+winTag+sickTag+algTag+retroTag,20,y);nl();
-    if(l.dayType){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(130,130,130);doc.text(DAYTYPES[l.dayType]||l.dayType,22,y);nl();}
-    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);
-    const f=[];
-    if(l.bleeding)f.push('Bleeding: '+(BLEED[l.bleeding]||l.bleeding));
-    if(l.irritability!==undefined)f.push('Irritability: '+(SW[l.irritability]||l.irritability));
-    if(l.sadness!==undefined)f.push('Sadness: '+(SW[l.sadness]||l.sadness));
-    if(l.anxiety!==undefined)f.push('Anxiety: '+(SW[l.anxiety]||l.anxiety));
-    if(l.energy!==undefined)f.push('Energy: '+(EW[l.energy]||l.energy));
-    if(l.sleep!==undefined)f.push('Sleep: '+(SLW[l.sleep]||l.sleep));
-    if(l.brainfog!==undefined)f.push('Brain fog: '+(SW[l.brainfog]||l.brainfog));
-    if(l.work!==undefined)f.push('Work: '+(SW[l.work]||l.work));
-    if(l.acne!==undefined)f.push('Acne: '+(ACW[l.acne]||l.acne));
-    if(l.libido!==undefined)f.push('Libido: '+(LW[l.libido]||l.libido));
-    if(l.pain!==undefined)f.push('Pain: '+(SW[l.pain]||l.pain));
-    if(l.bloating!==undefined)f.push('Bloating: '+(SW[l.bloating]||l.bloating));
-    [f.slice(0,4),f.slice(4,8),f.slice(8)].forEach(chunk=>{if(chunk.length){doc.text(chunk.join('   '),22,y);nl();}});
-    if(l.mounjaro==='yes'&&l.mounjaroDose){doc.setTextColor(106,142,174);doc.text('Mounjaro: '+l.mounjaroDose+'mg',22,y);nl();doc.setTextColor(80,80,80);}
-    if(l.medNotes&&l.medNotes.includes('missed-supp')&&l.missedSuppNote){doc.text('Missed supplement: '+l.missedSuppNote,22,y);nl();}
-    if(l.illSick==='yes'){doc.setTextColor(180,60,60);const il=['Sick: '+(ILLSEV[l.illSeverity]||''),l.illSx&&l.illSx.length?l.illSx.join(', '):'',l.illMeds&&l.illMeds.length?'Meds: '+l.illMeds.join(', '):''].filter(Boolean).join(' | ');doc.text(il,22,y);nl();doc.setTextColor(80,80,80);}
-    if(l.allergyPresent==='yes'){doc.setTextColor(160,100,40);const al=['Allergy: '+(ALLSEV[l.allergySev]||''),l.allergyTrigger?'Trigger: '+l.allergyTrigger:''].filter(Boolean).join(' | ');doc.text(al,22,y);nl();doc.setTextColor(80,80,80);}
-    if(l.stressSource){doc.text('Stress: '+l.stressSource,22,y);nl();}
-    if(l.notes){doc.text('Notes: '+l.notes,22,y);nl();}
-    doc.setDrawColor(230,230,230);doc.line(20,y,190,y);nl();
+
+    // Helper: print a field line
+    const pf=(label,val,color)=>{
+      if(val===undefined||val===null||val==='') return;
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+      doc.setTextColor(...(color||[60,60,60]));
+      const line=`${label}: ${val}`;
+      const wrapped=doc.splitTextToSize(line,165);
+      wrapped.forEach(wl=>{doc.text(wl,22,y);nl();});
+      doc.setTextColor(60,60,60);
+    };
+    const psec=(title)=>{
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(150,150,150);
+      doc.text(title.toUpperCase(),22,y);nl();
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(60,60,60);
+    };
+
+    // Day type
+    psec('Day type');
+    pf('Day',DAYTYPES[l.dayType]||l.dayType||(l.dayType===undefined?'Not answered':''));
+
+    // Bleeding
+    psec('Bleeding');
+    pf('Flow today',BLEED[l.bleeding]||l.bleeding||(l.bleeding===undefined?'Not answered':''));
+
+    // Illness
+    psec('Illness');
+    pf('Sick today',l.illSick==='yes'?'Yes':'No');
+    if(l.illSick==='yes'){
+      pf('Severity',ILLSEV[l.illSeverity]||l.illSeverity);
+      if(l.illSx&&l.illSx.length)pf('Symptoms',l.illSx.join(', '));
+      if(l.illMeds&&l.illMeds.length)pf('Medication',l.illMeds.join(', '));
+      if(l.illRx)pf('Prescription',l.illRx);
+    }
+
+    // Allergies
+    psec('Allergies');
+    pf('Allergy symptoms today',l.allergyPresent==='yes'?'Yes':'No');
+    if(l.allergyPresent==='yes'){
+      pf('Breakthrough severity',ALLSEV[l.allergySev]||l.allergySev);
+      if(l.allergySx&&l.allergySx.length)pf('Symptoms',l.allergySx.join(', '));
+      if(l.allergyTrigger)pf('Trigger',l.allergyTrigger);
+      if(l.allergyMeds&&l.allergyMeds.length)pf('Additional medication',l.allergyMeds.join(', '));
+    }
+
+    // Mood
+    psec('Mood');
+    pf('Irritability / anger',SW[l.irritability]||'Not answered');
+    pf('Sadness / anhedonia',SW[l.sadness]||'Not answered');
+    pf('Anxiety / on edge',SW[l.anxiety]||'Not answered');
+    pf('Mood swings',SW[l.moodswings]||'Not answered');
+    pf('Negative thinking',SW[l.negativity]||'Not answered');
+
+    // Cognition
+    psec('Cognition');
+    pf('Brain fog / concentration',SW[l.brainfog]||'Not answered');
+
+    // Physical
+    psec('Physical');
+    pf('Energy',EW[l.energy]||'Not answered');
+    pf('Sleep last night',SLW[l.sleep]||'Not answered');
+    pf('Bloating',SW[l.bloating]||'Not answered');
+    pf('Appetite / cravings',l.appetite===-1?'Suppressed — had to force myself to eat':(['Normal','Mildly increased','Strong cravings'][l.appetite]||'Not answered'));
+    pf('Headache',SW[l.headache]||'Not answered');
+    pf('Pain / inflammation',SW[l.pain]||'Not answered');
+    if(l.painLocation)pf('Pain location',l.painLocation);
+    pf('Acne / skin',ACW[l.acne]||'Not answered');
+    pf('Bowel regularity',BW[l.bowel]||'Not answered');
+
+    // Sexual health
+    psec('Sexual health');
+    pf('Libido',LW[l.libido]||'Not answered');
+
+    // Functional impact
+    psec('Functional impact');
+    const wl=l.dayType==='work'||l.dayType==='wfh'?'Work impact today':'Functional capacity today';
+    pf(wl,SW[l.work]||'Not answered');
+    pf('Relationships / interactions',(['Normal — engaged','Withdrew slightly','Actively avoided people','Had a conflict'][l.social]||'Not answered'));
+
+    // Context
+    psec('Context');
+    pf('Exercise',({rest:'Rest day',light:'Light',moderate:'Moderate',heavy:'Heavy'}[l.exercise])||'Not answered');
+    pf('Caffeine',({'0':'None','1':'1 cup','2':'2 cups','3+':'3+'}[l.caffeine])||'Not answered');
+    pf('Sodium',({'on-target':'On target','slightly-over':'Slightly over','over':'Significantly over'}[l.sodium])||'Not answered');
+    pf('Mounjaro injection',l.mounjaro==='yes'?`Yes${l.mounjaroDose?' — '+l.mounjaroDose+'mg':''}`:l.mounjaro==='no'?'No':'Not answered');
+    if(l.medNotes&&l.medNotes.length)pf('Medication notes',l.medNotes.join(', '));
+    if(l.medNotes&&l.medNotes.includes('missed-supp')&&l.missedSuppNote)pf('Missed supplement',l.missedSuppNote);
+
+    // Notes
+    if(l.stressSource)pf('Stress source',l.stressSource);
+    if(l.notes)pf('Notes',l.notes);
+
+    doc.setDrawColor(200,200,200);doc.line(20,y,190,y);nl();nl();
   });
   const suffix=fromDate?`_${fromDate}_to_${toDate||'today'}`:'_all';
   doc.save(name+'_cycle_log'+suffix+'_'+new Date().toISOString().slice(0,10)+'.pdf');
